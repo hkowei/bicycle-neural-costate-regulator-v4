@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from config import T_sim, total_steps_sim, dt
 from utils import solve_qp, rk4, save_animation
-import time
+import time    # 这里导入 time 模块是为了计算 NCR 的仿真时间，看看它的效率如何。
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f'Using device: {device}')
 
@@ -88,7 +88,7 @@ for i in range(total_steps_sim):
     u_k = np.array([v, omega])
     u_traj_undisturbed.append(u_k)
 
-    state_k = rk4(state_k, u_k)
+    state_k = rk4(state_k, u_k)            # rk4就是dynamics更新
     state_traj_undisturbed.append(state_k)
 
 # End timing

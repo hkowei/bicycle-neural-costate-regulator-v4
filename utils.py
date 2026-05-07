@@ -6,7 +6,7 @@ import casadi as ca
 import torch
 import random
 
-class UnicycleDynamics(torch.nn.Module):
+class UnicycleDynamics(torch.nn.Module):                         # pytorch 版本的dynamics，训练用
     def __init__(self):
         super(UnicycleDynamics, self).__init__()
 
@@ -33,7 +33,7 @@ class UnicycleDynamics(torch.nn.Module):
         theta_dot = omega
         dxdt = torch.stack([x_dot, y_dot, theta_dot, \
                          torch.tensor(0.0, device=x.device), \
-                            torch.tensor(0.0, device=x.device)])
+                            torch.tensor(0.0, device=x.device)])      # 这里的dxdt 是一个 5 维的 tensor，前面三维是状态的导数，后面两维是控制输入的导数（因为控制输入在这个模型里是直接给定的，所以它们的导数是0）
         dxdt = dxdt.unsqueeze(0)
         return dxdt
 
@@ -80,7 +80,7 @@ def plot_traj(state_mpc, u_mpc, time, h, option):
 
     print(f"Figure saved to {output_dir}")
     
-def dynamics(x, u):
+def dynamics(x, u):                                  # Numpy 版本的dynamics，仿真用
     # Unicycle model dynamics
     theta = x[0,2]
     V, omega = u[0], u[1]
@@ -95,13 +95,13 @@ def rk4(x, u):
     k2 = dynamics(x + dt / 2 * k1, u)
     k3 = dynamics(x + dt / 2 * k2, u)
     k4 = dynamics(x + dt * k3, u)
-    x_next = x + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
+    x_next = x + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)   # 这里simulation的更新使用rk4，但是训练的时候是用torchdiffeq的odeint来更新的，训练和仿真使用不同的数值积分方法，主要是为了让训练更快一些，因为torchdiffeq的odeint在训练过程中可以自动计算梯度，而rk4需要手动实现反向传播，这样会比较麻烦，所以在训练的时候我们选择使用torchdiffeq的odeint来更新状态。
     return x_next
 
-def solve_qp(lambda1, lambda2, lambda3, theta):
+def solve_qp(lambda1, lambda2, lambda3, theta):     # 这里的公式和train.py是不同的，因为train.py是在无约束条件下计算控制律，而QP用于求解有约束的情况
 
     # Define decision variables
-    v = ca.SX.sym('v')
+    v = ca.SX.sym('v')                                   # 数学写法是 argmin_v H(v, omega)，这里的v和omega是优化变量，所以用ca.SX.sym来定义符号变量
     omega = ca.SX.sym('omega')
 
     # Define the Hamiltonian

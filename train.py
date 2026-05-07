@@ -18,7 +18,7 @@ class InitialStateDataset(Dataset):
     def __len__(self):
         return len(self.initial_states)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx):   # 这里的getitem的名字规定好的，不能随便改
         # Return a single state
         return self.initial_states[idx]
 
@@ -37,7 +37,7 @@ class CoNN(nn.Module):
         x = torch.relu(self.fc2(x))
         x = torch.relu(self.fc3(x))
         x = self.fc4(x)
-        x = x.view(-1, self.prediction_horizon, 3)
+        x = x.view(-1, self.prediction_horizon, 3)   # 拆成 1, 30, 3
         return x
 
 
@@ -67,9 +67,9 @@ def train_network(initial_states, n, h, q1, q2, q3, r1, r2, model_save_path, bat
         epoch_loss = 0
         epoch_lambda_loss = 0
         # Iterate over all initial conditions
-        for state_0 in dataloader:
+        for state_0 in dataloader:                               # state_0 是从dataloader取出来的临时变量，代表一个 batch 的初始状态，这里 batch_size 是 1，所以是 (x, y, theta)
 
-            optimizer.zero_grad()
+            optimizer.zero_grad()                                # 将模型的梯度清零，为当前 batch 的训练做准备
             state_0 = state_0.to(device)
 
             costate_traj_k_hat = model(state_0)   # Predicted co-state trajectory starting at time k
@@ -78,15 +78,15 @@ def train_network(initial_states, n, h, q1, q2, q3, r1, r2, model_save_path, bat
             L_terminal = 0
             lambda_cost = 0
 
-            for i in range(n):
+            for i in range(n):                                                  # 迭代预测的每一个时间步，计算对应的控制输入和阶段成本
                 lambda1_i = costate_traj_k_hat[0,i,0]
                 lambda2_i = costate_traj_k_hat[0,i,1]
                 lambda3_i = costate_traj_k_hat[0,i,2]
-                theta_i = state_k[0, 2]
+                theta_i = state_k[0, 2]                     # 取当前状态的角度 theta，因为state_k 是 1,3 的 tensor，所以 state_k[0,2] 就是 theta 的值
 
-                v_opt = -0.5 * (lambda1_i * torch.cos(theta_i) + lambda2_i * torch.sin(theta_i))
-                w_opt = -0.5 * lambda3_i
-                u_opt = torch.cat([v_opt.unsqueeze(0), w_opt.unsqueeze(0)], dim=0).unsqueeze(0)
+                v_opt = -0.5 * (lambda1_i * torch.cos(theta_i) + lambda2_i * torch.sin(theta_i))   # 根据PMP的最优控制律计算 v 和 w。这里写torch是为了让它们成为 tensor，这样后面计算损失的时候就可以自动求导了，如果直接写成数值的话，就无法求导了。
+                w_opt = -0.5 * lambda3_i                                                           # 这里没有写torch，是因为 lambda3_i 本身就是一个 tensor，所以不需要再写 torch.tensor() 来转换了，直接用 lambda3_i 就可以了。
+                u_opt = torch.cat([v_opt.unsqueeze(0), w_opt.unsqueeze(0)], dim=0).unsqueeze(0)    # 把 v 和 w 组合成一个 1,2 的 tensor，作为控制输入
 
                 # Compute stage cost using matrices
                 state_cost = state_k @ Q @ state_k.T   # Quadratic cost for state
@@ -98,15 +98,15 @@ def train_network(initial_states, n, h, q1, q2, q3, r1, r2, model_save_path, bat
                 # Solve the initial value problem using odeint (Step simulation forward by dt)
                 x_and_u = torch.cat([state_k, u_opt], dim=1).to(device)
                 result = odeint(ode_solver, x_and_u, t_span, method='rk4')
-                state_k = result[-1,:,:3]  
+                state_k = result[-1,:,:3]                               # 这里的state_k 是 1,3 的 tensor，代表下一时刻的状态
 
             # Compute L_terminal
             L_terminal = state_k @ H @ state_k.T
             # Backpropagation
             loss = L_stage + L_terminal + beta*lambda_cost
-            loss.backward()
+            loss.backward()                            # 如果之前没有写 optimizer.zero_grad()，那么每次调用 loss.backward() 的时候，梯度会累积起来，这样就会导致模型的参数更新不正确。
             optimizer.step()
-            epoch_loss += loss.item()
+            epoch_loss += loss.item()                  # item: tensor 变 scalar
             epoch_lambda_loss += lambda_cost.item()
             
 
@@ -118,7 +118,7 @@ def train_network(initial_states, n, h, q1, q2, q3, r1, r2, model_save_path, bat
     torch.save(model.state_dict(), model_save_path)
     print(f"Model saved to {model_save_path}")
 
-if __name__ == '__main__':
+if __name__ == '__main__':                 # 如果直接运行 train.py，就会执行下面的代码，进行训练；如果在其他文件 import train.py，则不会执行下面的代码
     seed = 0
     set_seed(seed)
 
@@ -128,13 +128,13 @@ if __name__ == '__main__':
     os.makedirs("./model", exist_ok=True)
 
     # Step 1: Generate 1000 combinations of (x, y, theta)
-    x_range = np.linspace(-2, 2, 10)
+    x_range = np.linspace(-2, 2, 10)                  # -2 到 2，取十个点
     y_range = np.linspace(-2, 2, 10)
     theta_range = np.linspace(-2, 2, 10)
 
     # Create a grid of all combinations
     x, y, theta = np.meshgrid(x_range, y_range, theta_range)
-    initial_states = np.vstack([x.ravel(), y.ravel(), theta.ravel()]).T
+    initial_states = np.vstack([x.ravel(), y.ravel(), theta.ravel()]).T       # 重点：把三维的网格数据变成一个二维的数组，每一行是一个 (x, y, theta) 的组合，最终得到 1000 行，3 列的数组
 
     # Randomly shuffle the data set
     np.random.shuffle(initial_states)
