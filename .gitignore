@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 draft.py
 figs/
+naming_map.txt
