@@ -61,13 +61,13 @@ def train_network(initial_states, n, h, q1, q2, q3, r1, r2, model_save_path, bat
     # Define cost matrices
     Q = torch.diag(torch.tensor([q1, q2, q3], device=device))  # State cost
     R = torch.diag(torch.tensor([r1, r2], device=device))      # Control input cost
-    H =  h*Q                                                   # Terminal cost
+    H =  h*Q                                                   # Terminal cost，保留，不必修改
 
     for epoch in range(epochs):     
         epoch_loss = 0
         epoch_lambda_loss = 0
         # Iterate over all initial conditions
-        for state_0 in dataloader:                               # state_0 是从dataloader取出来的临时变量，代表一个 batch 的初始状态，这里 batch_size 是 1，所以是 (x, y, theta)
+        for state_0 in dataloader:                               # state_0 是从dataloader取出来的临时变量，代表一个 batch 的初始状态，这里 batch_size 是 1，所以是 (x, y, theta)。state_0 的 shape 是 (1, 3)，因为 dataloader 会自动把它变成一个 batch 的形式，即使 batch_size 是 1。
 
             optimizer.zero_grad()                                # 将模型的梯度清零，为当前 batch 的训练做准备
             state_0 = state_0.to(device)
@@ -96,8 +96,8 @@ def train_network(initial_states, n, h, q1, q2, q3, r1, r2, model_save_path, bat
                 L_stage += state_cost + control_cost
 
                 # Solve the initial value problem using odeint (Step simulation forward by dt)
-                x_and_u = torch.cat([state_k, u_opt], dim=1).to(device)
-                result = odeint(ode_solver, x_and_u, t_span, method='rk4')
+                z_and_u = torch.cat([state_k, u_opt], dim=1).to(device)
+                result = odeint(ode_solver, z_and_u, t_span, method='rk4')
                 state_k = result[-1,:,:3]                               # 这里的state_k 是 1,3 的 tensor，代表下一时刻的状态
 
             # Compute L_terminal
@@ -141,5 +141,5 @@ if __name__ == '__main__':                 # 如果直接运行 train.py，就�
     
     # Train the model
     q1 = 10.0; q2 = 10.0; q3 = 10.0; r1 = 1.0; r2 = 1.0
-    model_save_path = f"./model/hkw_t0_ncr_N{n}_h{h}_seed_{seed}_e{epoch}.pth"
+    model_save_path = f"./model/bi_t0_ncr_N{n}_h{h}_seed_{seed}_e{epoch}.pth"
     train_network(initial_states, n, h, q1, q2, q3, r1, r2, model_save_path, epochs=epoch, lr=1e-3)

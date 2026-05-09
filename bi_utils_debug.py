@@ -1,41 +1,44 @@
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
-from config import dt, N, v_max, v_min, w_max, w_min, T_sim, total_steps_sim
+from config import dt, N, u_a_max, u_a_min, u_beta_max, u_beta_min, T_sim, total_steps_sim, rear_dist, r1, r2
 import casadi as ca
 import torch
 import random
 
-class UnicycleDynamics(torch.nn.Module):                         # pytorch 版本的dynamics，训练用
+class BicycleDynamics(torch.nn.Module):                         # pytorch 版本的dynamics，训练用
     def __init__(self):
-        super(UnicycleDynamics, self).__init__()
+        super(BicycleDynamics, self).__init__()
 
-    def forward(self, t, x_and_u):
+    def forward(self, t, z_and_u):
         """
-        Args:
+        Args (Bicycle):
             t: time (required by torchdiffeq, even if not used)
-            x_and_u: concatenated state [x, y, theta] and control [v, omega] (torch tensor)
+            z_and_u: concatenated state [x, y, theta, speed] and control [a, beta] (torch tensor)
+            rear_dist: distance from rear axle to center of gravity (constant parameter)
 
         Returns:
             dx/dt (torch tensor)
         """
         # Split state and control from concatenated tensor
-        x = x_and_u[0,:3]  # state [x, y, theta]
-        u = x_and_u[0,3:]  # control input [v, omega]
+        z = z_and_u[0,:4]  # state [x, y, theta, speed]
+        u = z_and_u[0,4:]  # control input [a, beta]
 
-        theta = x[2]
-        v = u[0]
-        omega = u[1]
+        speed = z[3]
+        theta = z[2]
+        u_a = u[0]
+        u_beta = u[1]
 
         # Compute derivatives
-        x_dot = v * torch.cos(theta)
-        y_dot = v * torch.sin(theta)
-        theta_dot = omega
-        dxdt = torch.stack([x_dot, y_dot, theta_dot, \
-                         torch.tensor(0.0, device=x.device), \
-                            torch.tensor(0.0, device=x.device)])      # 这里的dxdt 是一个 5 维的 tensor，前面三维是状态的导数，后面两维是控制输入的导数（因为控制输入在这个模型里是直接给定的，所以它们的导数是0）
-        dxdt = dxdt.unsqueeze(0)
-        return dxdt
+        x_dot = speed * torch.cos(theta) - speed * torch.sin(theta) * u_beta
+        y_dot = speed * torch.sin(theta) + speed * torch.cos(theta) * u_beta
+        theta_dot = speed/rear_dist * u_beta
+        speed_dot = u_a
+        dzdt = torch.stack([x_dot, y_dot, theta_dot, speed_dot, \
+                            torch.tensor(0.0, device=z.device), \
+                            torch.tensor(0.0, device=z.device)])    # 这里的dxdt 是一个 6 维的 tensor，前面四维是状态的导数，后面两维是控制输入的导数（因为控制输入在这个模型里是直接给定的，所以它们的导数是0）
+        dzdt = dzdt.unsqueeze(0)
+        return dzdt
 
 def plot_traj(state_mpc, u_mpc, time, h, option):
     import os
@@ -80,47 +83,48 @@ def plot_traj(state_mpc, u_mpc, time, h, option):
 
     print(f"Figure saved to {output_dir}")
     
-def dynamics(x, u):                                  # Numpy 版本的dynamics，仿真用
-    # Unicycle model dynamics
-    theta = x[0,2]
-    V, omega = u[0], u[1]
-    x_dot = V * np.cos(theta)
-    y_dot = V * np.sin(theta)
-    theta_dot = omega
-    return np.array([x_dot, y_dot, theta_dot])
+def bicycle_dynamics(z, u):                                  # Numpy 版本的dynamics，仿真用
+    theta, speed = z[0,2], z[0,3]
+    u_a, u_beta = u[0], u[1]
+    x_dot = speed * np.cos(theta) - speed * np.sin(theta) * u_beta
+    y_dot = speed * np.sin(theta) + speed * np.cos(theta) * u_beta
+    theta_dot = speed/rear_dist * u_beta
+    speed_dot = u_a
+    return np.array([x_dot, y_dot, theta_dot, speed_dot])
 
-def rk4(x, u):
+def rk4(z, u):
     # RK4 integration step for dynamics
-    k1 = dynamics(x, u)
-    k2 = dynamics(x + dt / 2 * k1, u)
-    k3 = dynamics(x + dt / 2 * k2, u)
-    k4 = dynamics(x + dt * k3, u)
-    x_next = x + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)   # 这里simulation的更新使用rk4，但是训练的时候是用torchdiffeq的odeint来更新的，训练和仿真使用不同的数值积分方法，主要是为了让训练更快一些，因为torchdiffeq的odeint在训练过程中可以自动计算梯度，而rk4需要手动实现反向传播，这样会比较麻烦，所以在训练的时候我们选择使用torchdiffeq的odeint来更新状态。
-    return x_next
+    k1 = bicycle_dynamics(z, u)
+    k2 = bicycle_dynamics(z + dt / 2 * k1, u)
+    k3 = bicycle_dynamics(z + dt / 2 * k2, u)
+    k4 = bicycle_dynamics(z + dt * k3, u)
+    z_next = z + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)   # 这里simulation的更新使用rk4，但是训练的时候是用torchdiffeq的odeint来更新的，训练和仿真使用不同的数值积分方法，主要是为了让训练更快一些，因为torchdiffeq的odeint在训练过程中可以自动计算梯度，而rk4需要手动实现反向传播，这样会比较麻烦，所以在训练的时候我们选择使用torchdiffeq的odeint来更新状态。
+    return z_next
 
-def solve_qp(lambda1, lambda2, lambda3, theta):     # 这里的公式和train.py是不同的，因为train.py是在无约束条件下计算控制律，而QP用于求解有约束的情况
+def bicycle_solve_qp(lambda_x, lambda_y, lambda_theta, lambda_speed, theta, speed):     # 这里的公式和train.py是不同的，因为train.py是在无约束条件下计算控制律，而QP用于求解有约束的情况
 
     # Define decision variables
-    v = ca.SX.sym('v')                                   # 数学写法是 argmin_v H(v, omega)，这里的v和omega是优化变量，所以用ca.SX.sym来定义符号变量
-    omega = ca.SX.sym('omega')
+    u_a = ca.SX.sym('u_a')                                   # 数学写法是 argmin_v H(v, omega)，这里的v和omega是优化变量，所以用ca.SX.sym来定义符号变量
+    u_beta = ca.SX.sym('u_beta')
 
     # Define the Hamiltonian
-    H = (v**2 + omega**2 +
-        lambda1 * v * ca.cos(theta) +
-        lambda2 * v * ca.sin(theta) +
-        lambda3 * omega)
+    H = (r1*u_a**2 + r2*u_beta**2 -
+        lambda_x * u_beta * speed * ca.sin(theta) +
+        lambda_y * u_beta * speed * ca.cos(theta) +
+        lambda_theta * u_beta * speed/rear_dist   +
+        lambda_speed * u_a)
 
     # Set up the QP problem
     qp = {
-        'x': ca.vertcat(v, omega),  # Decision variables [v, omega]
+        'x': ca.vertcat(u_a, u_beta),  # Decision variables [u_a, u_beta]
         'f': H,                    # Cost function (Hamiltonian)
         'g': ca.vertcat()          # No additional equality/inequality constraints
     }
 
     # Set bounds for the decision variables
 
-    lbx = [v_min, w_min]  # Lower bounds for [v, omega]
-    ubx = [v_max, w_max]    # Upper bounds for [v, omega]
+    lbx = [u_a_min, u_beta_min]  # Lower bounds for [u_a, u_beta]
+    ubx = [u_a_max, u_beta_max]  # Upper bounds for [u_a, u_beta]
 
     opts = {
     'printLevel': 'none'  # Suppress solver output for qpoases
@@ -132,9 +136,9 @@ def solve_qp(lambda1, lambda2, lambda3, theta):     # 这里的公式和train.py
     solution = S(lbx=lbx, ubx=ubx)
 
     # Extract results
-    v_opt = solution['x'][0]
-    omega_opt = solution['x'][1]
-    return v_opt, omega_opt
+    u_a_opt = solution['x'][0]
+    u_beta_opt = solution['x'][1]
+    return u_a_opt, u_beta_opt
 
 def set_seed(seed=42):
     random.seed(seed)
