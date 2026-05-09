@@ -5,7 +5,7 @@ import torch.nn as nn
 from torchdiffeq import odeint # Use odeint for integration
 import numpy as np
 from bi_utils_debug import BicycleDynamics, set_seed
-from config import dt, beta, rear_dist
+from config import dt, beta, rear_dist, CONN_HIDDEN_DIMS, q1, q2, q3, q4, r1, r2, n, h, epoch
 from torchdiffeq import odeint
 
 
@@ -27,10 +27,11 @@ class CoNN(nn.Module):
     def __init__(self, prediction_horizon):
         super(CoNN, self).__init__()
         self.prediction_horizon = prediction_horizon
-        self.fc1 = nn.Linear(4, 2)                           # bicyle有四个状态 (之前是3)
-        self.fc2 = nn.Linear(2, 2)
-        self.fc3 = nn.Linear(2, 2)
-        self.fc4 = nn.Linear(2, 4*prediction_horizon)        # bicycle有四个状态 (之前是3)
+        h1, h2, h3 = CONN_HIDDEN_DIMS
+        self.fc1 = nn.Linear(4, h1)                           # bicyle有四个状态 (之前是3)
+        self.fc2 = nn.Linear(h1, h2)
+        self.fc3 = nn.Linear(h2, h3)
+        self.fc4 = nn.Linear(h3, 4*prediction_horizon)        # bicycle有四个状态 (之前是3)
 
     def forward(self, x):
         x = torch.relu(self.fc1(x))
@@ -127,9 +128,9 @@ if __name__ == '__main__':                 # 如果直接运行 train.py，就�
     seed = 0
     set_seed(seed)
 
-    n = 5 # Prediction horizon
-    h = 50 # Terminal cost coefficient
-    epoch = 1
+    # n = 5 # Prediction horizon
+    # h = 50 # Terminal cost coefficient
+    # epoch = 1
     os.makedirs("./model", exist_ok=True)
 
     # Step 1: Generate 1000 combinations of (x, y, theta)
@@ -147,6 +148,6 @@ if __name__ == '__main__':                 # 如果直接运行 train.py，就�
     np.random.shuffle(initial_states)
     
     # Train the model
-    q1 = 10.0; q2 = 10.0; q3 = 10.0; q4 = 10.0; r1 = 1.0; r2 = 1.0    # may need to import from config later
+    # q1 = 10.0; q2 = 10.0; q3 = 10.0; q4 = 10.0; r1 = 1.0; r2 = 1.0    # may need to import from config later
     model_save_path = f"./model/bi_t0_ncr_N{n}_h{h}_seed_{seed}_e{epoch}.pth"
     train_network(initial_states, n, h, q1, q2, q3, q4, r1, r2, model_save_path, epochs=epoch, lr=1e-3)

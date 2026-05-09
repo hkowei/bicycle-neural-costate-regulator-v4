@@ -149,7 +149,7 @@ def set_seed(seed=42):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def save_animation(t_span, x_traj, y_traj, theta_traj, costate_trajectory, option):
+def save_animation(t_span, x_traj, y_traj, theta_traj, speed_traj, costate_trajectory, option):
 
     # Set up figure and axes
     fig, axs = plt.subplots(1, 2, figsize=(12, 6))
@@ -160,10 +160,11 @@ def save_animation(t_span, x_traj, y_traj, theta_traj, costate_trajectory, optio
     line_state1, = axs[0].plot([], [], linestyle='-', dashes=[3, 1], label=r"$x_{ncr}$", linewidth=5)
     line_state2, = axs[0].plot([], [], linestyle='-', dashes=[3, 1], label=r"$y_{ncr}$", linewidth=5)
     line_state3, = axs[0].plot([], [], linestyle='-', dashes=[3, 1], label=r"$\theta_{ncr}$", linewidth=5)
+    line_state4, = axs[0].plot([], [], linestyle='-', dashes=[3, 1], label=r"$speed_{ncr}$", linewidth=5)  # 追加speed轨迹
     axs[0].legend(fontsize=28)
     axs[0].grid(True)
     axs[0].set_xlim(0, T_sim)
-    axs[0].set_ylim(-5, 5)
+    axs[0].set_ylim(-10, 10)
     axs[0].tick_params(axis="both", labelsize=20)
 
     # Right plot: Co-state trajectory
@@ -173,6 +174,7 @@ def save_animation(t_span, x_traj, y_traj, theta_traj, costate_trajectory, optio
     line_lambda1, = axs[1].plot([], [], linestyle='-', dashes=[3, 1], label=r"$\lambda{x}$", linewidth=5)
     line_lambda2, = axs[1].plot([], [], linestyle='-', dashes=[3, 1], label=r"$\lambda{y}$", linewidth=5)
     line_lambda3, = axs[1].plot([], [], linestyle='-', dashes=[3, 1], label=r"$\lambda{\theta}$", linewidth=5)
+    line_lambda4, = axs[1].plot([], [], linestyle='-', dashes=[3, 1], label=r"$\lambda{speed}$", linewidth=5)  # 追加speed的costate轨迹
     axs[1].legend(fontsize=28)
     axs[1].grid(True)
     axs[1].set_ylim(-10, 10)
@@ -185,6 +187,7 @@ def save_animation(t_span, x_traj, y_traj, theta_traj, costate_trajectory, optio
         line_state1.set_data(t_span[:frame+1], x_traj[:frame+1])
         line_state2.set_data(t_span[:frame+1], y_traj[:frame+1])
         line_state3.set_data(t_span[:frame+1], theta_traj[:frame+1])
+        line_state4.set_data(t_span[:frame+1], speed_traj[:frame+1])  # 追加speed轨迹的更新
 
         # # Update co-state trajectory plot
         n = len( costate_trajectory[frame][0, :, 0])
@@ -193,12 +196,13 @@ def save_animation(t_span, x_traj, y_traj, theta_traj, costate_trajectory, optio
         line_lambda1.set_data(t_span_costate, costate_trajectory[frame][0, :, 0])
         line_lambda2.set_data(t_span_costate, costate_trajectory[frame][0, :, 1])
         line_lambda3.set_data(t_span_costate, costate_trajectory[frame][0, :, 2])
+        line_lambda4.set_data(t_span_costate, costate_trajectory[frame][0, :, 3])  # 追加speed的costate轨迹的更新
 
-        return line_state1, line_state2, line_state3, line_lambda1, line_lambda2, line_lambda3
+        return line_state1, line_state2, line_state3, line_state4, line_lambda1, line_lambda2, line_lambda3, line_lambda4
 
     # Create animation
     plt.tight_layout()
     ani = animation.FuncAnimation(fig, update, frames=total_steps_sim, interval=100, blit=True)
-    output_dir = f"./figs/animation_{option}.gif"
+    output_dir = f"./bi_figs/bi_animation_{option}.gif"
     ani.save(output_dir, writer=animation.PillowWriter(fps=20))
     print(f"Animation saved to {output_dir}")

@@ -1,5 +1,7 @@
 dt = 0.05 # Sampling time
-N = 30 # Prediction hoirzon
+n = 5 # Prediction hoirzon
+N = n
+epoch = 1
 # Control input Constraints
 u_a_min = -1
 u_a_max = 1
@@ -14,3 +16,6 @@ beta = 0.1
 rear_dist = 0.5 # Distance from rear axle to center of gravity, used in Bicycle dynamics
 
 r1 = 1.0; r2 = 1.0; q1 = 10.0; q2 = 10.0; q3 = 10; q4 = 10; h = 50
+
+CONN_HIDDEN_DIMS = [2, 2, 2]
+
