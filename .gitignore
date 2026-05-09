@@ -3,3 +3,5 @@ __pycache__/
 draft.py
 figs/
 naming_map.txt
+bi_figs/
+run.py
