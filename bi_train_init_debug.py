@@ -5,7 +5,7 @@ import torch.nn as nn
 from torchdiffeq import odeint # Use odeint for integration
 import numpy as np
 from bi_utils_debug import BicycleDynamics, set_seed
-from config import dt, beta, rear_dist, CONN_HIDDEN_DIMS, q1, q2, q3, q4, r1, r2, n, h, epoch
+from config import dt, beta, rear_dist, CONN_HIDDEN_DIMS, q1, q2, q3, q4, r1, r2, n, h, epoch, Nsample
 from torchdiffeq import odeint
 
 
@@ -134,7 +134,7 @@ if __name__ == '__main__':                 # 如果直接运行 train.py，就�
     os.makedirs("./model", exist_ok=True)
 
     # Step 1: Generate 1000 combinations of (x, y, theta)
-    Nsample = 2
+    # Nsample = 2
     x_range = np.linspace(-2, 2, Nsample)                  # -2 到 2，取Nsample个点
     y_range = np.linspace(-2, 2, Nsample)
     theta_range = np.linspace(-2, 2, Nsample)
