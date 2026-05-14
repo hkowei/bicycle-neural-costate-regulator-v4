@@ -217,7 +217,8 @@ def save_animation(t_span, x_traj, y_traj, theta_traj, speed_traj, costate_traje
 # ==============================================================================
 # ==============================================================================
 
-def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, initial_state_option, gif_name, start_xy=None, goal_xy=None, obstacles=None,
+# note: we need u_beta to calculate the heading of the bicycle
+def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, beta_robot, initial_state_option, gif_name, start_xy=None, goal_xy=None, obstacles=None,
                                        robot_r=0.25, margin=0.05):
     os.makedirs("./bi_animation/bicycle", exist_ok=True)
     # if initial_state_option == 'a':
@@ -235,7 +236,11 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, initial_sta
         start_xy = (float(x_robot[0]), float(y_robot[0]))
 
     if goal_xy is None:
-        goal_xy = (float(x_robot[-1]), float(y_robot[-1]))
+        # goal_xy = (float(x_robot[-1]), float(y_robot[-1]))
+        if initial_state_option == 'c':
+            goal_xy = (1, 1)
+        else:
+            goal_xy = (0, 0)
 
     # Create a figure for the animation
     fig, ax = plt.subplots(figsize=(8, 6))
@@ -247,7 +252,7 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, initial_sta
     ax.tick_params(axis="both", labelsize=20)
     
 
-   # Draw obstacles and safety boundaries
+   # Draw obstacles and safety boundaries 不管
     if obstacles is not None:
         for j, obs in enumerate(obstacles):
             xo = float(obs["xo"])
@@ -260,22 +265,26 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, initial_sta
         # Safety boundary enforced by CBF/HOCBF
             ax.add_patch(plt.Circle((xo, yo), r_eff, fill=False, linewidth=2, linestyle='--', color='red', label="Safety boundary" if j == 0 else None, zorder=3))
 
-    # Draw the robot components
-    robot_body = plt.Circle((0, 0), 0.25, color='cyan', fill=True, linewidth=2)  # Robot circular base   #was 0.25
-    wheel_width = 0.1
-    wheel_height = 0.2
+    # assume lr = lf
+    front_dist = rear_dist
 
-    wheel1 = plt.Rectangle((-wheel_height / 2, -wheel_width / 2), wheel_height, wheel_width, color='gold')  # Left wheel
-    wheel2 = plt.Rectangle((-wheel_height / 2, -wheel_width / 2), wheel_height, wheel_width, color='gold')  # Right wheel
+    # Draw the robot components
+    # robot_body = plt.Circle((0, 0), 0.25, color='cyan', fill=True, linewidth=2)  # Robot circular base   #was 0.25
+    robot_body, = ax.plot([-rear_dist, front_dist], [0, 0], color="black", linewidth=3)
+    wheel_width = 0.2
+    wheel_height = 0.6
+
+    wheelrear = plt.Rectangle((-rear_dist-wheel_height / 2, -wheel_width / 2), wheel_height, wheel_width, color='gold')  # Left wheel
+    wheelfront = plt.Rectangle((front_dist-wheel_height / 2, -wheel_width / 2), wheel_height, wheel_width, color='gold')  # Right wheel
 
     # Add the robot components to the plot
-    ax.add_patch(robot_body)
-    ax.add_patch(wheel1)
-    ax.add_patch(wheel2)
+    # ax.add_patch(robot_body)     # 这里改成了plot，所以不需要add_patch了
+    ax.add_patch(wheelrear)
+    ax.add_patch(wheelfront)
     
     # if i want to include heading arrow 
-   # front_len = 0.35
-    #front_arrow, = ax.plot([], [], color='black', linewidth=3, solid_capstyle='round')
+    # front_len = 0.35
+    # front_arrow, = ax.plot([], [], color='black', linewidth=3, solid_capstyle='round')
 
 
     # Add the black solid circles to represent obstacles
@@ -289,39 +298,45 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, initial_sta
     robot_path, = ax.plot([], [], linestyle="--", color="saddlebrown", label="Traveled Path", linewidth=2)
     ax.legend(loc="upper right",fontsize=20)
 
+    # transform beta to delta
+    delta_robot = np.arctan(np.tan(beta_robot)*(rear_dist + front_dist)/rear_dist)
+    if len(delta_robot) == len(x_robot) - 1:
+        delta_robot = np.append(delta_robot, delta_robot[-1])
+
     # Animation function
     def update(frame):
         # Update the robot's position and orientation
-        x, y, theta = x_robot[frame], y_robot[frame], theta_robot[frame]
+        x, y, theta, delta = x_robot[frame], y_robot[frame], theta_robot[frame], delta_robot[frame]
         
         # Update robot body position
-        robot_body.center = (x, y)
+        robot_body.set_data([x - rear_dist * np.cos(theta), x + front_dist * np.cos(theta)],
+                            [y - rear_dist * np.sin(theta), y + front_dist * np.sin(theta)])
         
         # Wheel offsets relative to the robot's center
-        wheel_offset = 0.3 # Distance of wheels from center  
+        # wheel_offset = 0.3 # Distance of wheels from center  
         
-        # Update left wheel position
-        wheel1_center_x = x - wheel_offset * np.sin(theta)
-        wheel1_center_y = y + wheel_offset * np.cos(theta)
-        wheel1.set_xy((
-            wheel1_center_x - wheel_height / 2 * np.cos(theta) + wheel_width / 2 * np.sin(theta),
-            wheel1_center_y - wheel_height / 2 * np.sin(theta) - wheel_width / 2 * np.cos(theta),
+        # update rear wheel position and orientation
+        wheelrear_center_x = x - rear_dist * np.cos(theta)
+        wheelrear_center_y = y - rear_dist * np.sin(theta)
+        wheelrear.set_xy((
+            wheelrear_center_x - wheel_height / 2 * np.cos(theta) + wheel_width / 2 * np.sin(theta),
+            wheelrear_center_y - wheel_height / 2 * np.sin(theta) - wheel_width / 2 * np.cos(theta)
         ))
-        wheel1.angle = np.degrees(theta)
-        
-        # Update right wheel position
-        wheel2_center_x = x + wheel_offset * np.sin(theta)
-        wheel2_center_y = y - wheel_offset * np.cos(theta)
-        wheel2.set_xy((
-            wheel2_center_x - wheel_height / 2 * np.cos(theta) + wheel_width / 2 * np.sin(theta),
-            wheel2_center_y - wheel_height / 2 * np.sin(theta) - wheel_width / 2 * np.cos(theta),
+        wheelrear.angle = np.degrees(theta)
+
+        # update front wheel position and orientation
+        wheelfront_center_x = x + front_dist * np.cos(theta)
+        wheelfront_center_y = y + front_dist * np.sin(theta)
+        wheelfront.set_xy((
+            wheelfront_center_x - wheel_height / 2 * np.cos(theta + delta) + wheel_width / 2 * np.sin(theta + delta),
+            wheelfront_center_y - wheel_height / 2 * np.sin(theta + delta) - wheel_width / 2 * np.cos(theta + delta)
         ))
-        wheel2.angle = np.degrees(theta)
+        wheelfront.angle = np.degrees(theta + delta)
         
         # Update the dynamic trajectory
         robot_path.set_data(x_robot[:frame], y_robot[:frame])  # Update only up to the current frame
 
-        return robot_body, wheel1, wheel2, robot_path  
+        return robot_body, wheelrear, wheelfront, robot_path  
     # Create the animation
     time_per_step = 0.05 # in seconds, adjusted based on experiment results
     plt.tight_layout()
