@@ -7,7 +7,7 @@ import numpy as np
 from bi_utils_debug import BicycleDynamics, set_seed
 from config import dt, beta, rear_dist, CONN_HIDDEN_DIMS, q1, q2, q3, q4, r1, r2, n, h, epoch, Nsample
 from torchdiffeq import odeint
-
+import time
 
 # Step 2: Create Dataset Class
 class InitialStateDataset(Dataset):
@@ -65,11 +65,27 @@ def train_network(initial_states, n, h, q1, q2, q3, q4, r1, r2, model_save_path,
     H =  h*Q                                                   # Terminal cost，保留，不必修改
 
     for epoch in range(epochs):     
+        epoch_start = time.time()
+        last_print_time = epoch_start
+        
         epoch_loss = 0
         epoch_lambda_loss = 0
         # Iterate over all initial conditions
-        for state_0 in dataloader:                               # state_0 是从dataloader取出来的临时变量，代表一个 batch 的初始状态，这里 batch_size 是 1，所以是 (x, y, theta, speed)。state_0 的 shape 是 (1, 4)，因为 dataloader 会自动把它变成一个 batch 的形式，即使 batch_size 是 1。
-
+        # for state_0 in dataloader:                               # state_0 是从dataloader取出来的临时变量，代表一个 batch 的初始状态，这里 batch_size 是 1，所以是 (x, y, theta, speed)。state_0 的 shape 是 (1, 4)，因为 dataloader 会自动把它变成一个 batch 的形式，即使 batch_size 是 1。
+        for batch_idx, state_0 in enumerate(dataloader):
+            if batch_idx % 200 == 0:
+                now = time.time()
+                elapsed = now - epoch_start
+                interval = now - last_print_time
+                print(
+                    f"epoch {epoch+1}/{epochs}, "
+                    f"batch {batch_idx}/{len(dataloader)}, "
+                    f"elapsed {elapsed:.1f}s, "
+                    f"last 50 batches {interval:.1f}s",
+                    flush=True
+                )
+                last_print_time = now
+            
             optimizer.zero_grad()                                # 将模型的梯度清零，为当前 batch 的训练做准备
             state_0 = state_0.to(device)
 
@@ -135,8 +151,8 @@ if __name__ == '__main__':                 # 如果直接运行 train.py，就�
 
     # Step 1: Generate 1000 combinations of (x, y, theta)
     # Nsample = 2
-    x_range = np.linspace(-2, 2, Nsample)                  # -2 到 2，取Nsample个点
-    y_range = np.linspace(-2, 2, Nsample)
+    x_range = np.linspace(-2, 2, 7)                  # -2 到 2，取Nsample个点
+    y_range = np.linspace(-2, 2, 7)
     theta_range = np.linspace(-2, 2, Nsample)
     speed_range = np.linspace(-2, 2, Nsample)
 
