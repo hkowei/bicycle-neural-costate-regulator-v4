@@ -345,8 +345,8 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, beta_robot,
     anim.save(output_dir, writer="ffmpeg", fps=1/time_per_step)
     print(f"Animation (wheeled robot motion) saved to {output_dir}")
 
-
-def save_bicycle_final_shot(x_robot, y_robot, file_name, start_xy=None, goal_xy=None, theta_robot=None, obstacles=None, robot_r=0.25, margin=0.05,
+# ================== Final shot of bicycle trajectory with safety boundaries ==================
+def save_bicycle_final_shot(x_robot, y_robot, u_beta_robot, file_name, start_xy=None, goal_xy=None, theta_robot=None, obstacles=None, robot_r=0.25, margin=0.05,
     show_safety_boundary=True, draw_robot=True, robot_alpha=0.45,):
     """
     Save a static snapshot of the executed trajectory with optional safety boundaries
@@ -368,6 +368,8 @@ def save_bicycle_final_shot(x_robot, y_robot, file_name, start_xy=None, goal_xy=
     traj_start_xy = (float(x_robot[0]), float(y_robot[0]))
     end_xy = (float(x_robot[-1]), float(y_robot[-1]))
     end_theta = float(theta_robot[-1]) if theta_robot is not None else 0.0
+    end_u_beta = float(u_beta_robot[-1]) if u_beta_robot is not None else 0.0
+    end_delta = np.arctan(np.tan(end_u_beta)*(rear_dist + rear_dist)/rear_dist)
     start_marker_xy = (float(start_xy[0]), float(start_xy[1]), ) if start_xy is not None else traj_start_xy
     goal_marker_xy = (float(goal_xy[0]), float(goal_xy[1]), ) if goal_xy is not None else end_xy
 
@@ -378,7 +380,7 @@ def save_bicycle_final_shot(x_robot, y_robot, file_name, start_xy=None, goal_xy=
     x_candidates = [float(np.min(x_robot)), float(np.max(x_robot)),start_marker_xy[0], goal_marker_xy[0],]
     y_candidates = [float(np.min(y_robot)), float(np.max(y_robot)), start_marker_xy[1], goal_marker_xy[1],]
 
-    if obstacles is not None:
+    if obstacles is not None:                 # don't care for now
         for j, obs in enumerate(obstacles):
             xo = float(obs["xo"])
             yo = float(obs["yo"])
@@ -401,36 +403,62 @@ def save_bicycle_final_shot(x_robot, y_robot, file_name, start_xy=None, goal_xy=
     ax.add_patch(plt.Circle((start_marker_xy[0], start_marker_xy[1]), 0.15, color="green", fill=True,alpha=0.5, label="_nolegend_", zorder=4))
     ax.add_patch(plt.Circle((goal_marker_xy[0], goal_marker_xy[1]), 0.15, color="red", fill=True,alpha=0.5, label="_nolegend_", zorder=4))
 
+    front_dist = rear_dist
 
     if draw_robot:
         # Draw a simple bicycle footprint at the terminal state.
-        body = plt.Circle(end_xy, robot_r, color="cyan", ec="black", lw=1.2, alpha=robot_alpha, zorder=5)
-        ax.add_patch(body)
+        # body = plt.Circle(end_xy, robot_r, color="cyan", ec="black", lw=1.2, alpha=robot_alpha, zorder=5)
+        # ax.add_patch(body)
+        robot_body, = ax.plot([end_xy[0] - rear_dist * np.cos(end_theta), end_xy[0] + front_dist * np.cos(end_theta)],
+                            [end_xy[1] - rear_dist * np.sin(end_theta), end_xy[1] + front_dist * np.sin(end_theta)], color="black", linewidth=3)
 
-        wheel_length = 0.20
-        wheel_width = 0.08
-        wheel_offset = robot_r + 0.05
+        wheel_width = 0.2
+        wheel_height = 0.6
 
-        c = np.cos(end_theta)
-        s = np.sin(end_theta)
-        fwd = np.array([c, s], dtype=float)
-        lat = np.array([-s, c], dtype=float)
+        # rear wheel
+        wheelrear_center_x = end_xy[0] - rear_dist * np.cos(end_theta)
+        wheelrear_center_y = end_xy[1] - rear_dist * np.sin(end_theta)
+        wheelrear = plt.Rectangle((
+            wheelrear_center_x - wheel_height / 2 * np.cos(end_theta) + wheel_width / 2 * np.sin(end_theta),
+            wheelrear_center_y - wheel_height / 2 * np.sin(end_theta) - wheel_width / 2 * np.cos(end_theta)
+        ), wheel_height, wheel_width, color='gold', angle=np.degrees(end_theta))
+        ax.add_patch(wheelrear)
 
-        def _wheel_polygon(center_xy):
-            center = np.array(center_xy, dtype=float)
-            p1 = center - 0.5 * wheel_length * fwd - 0.5 * wheel_width * lat
-            p2 = center + 0.5 * wheel_length * fwd - 0.5 * wheel_width * lat
-            p3 = center + 0.5 * wheel_length * fwd + 0.5 * wheel_width * lat
-            p4 = center - 0.5 * wheel_length * fwd + 0.5 * wheel_width * lat
-            return np.vstack([p1, p2, p3, p4])
+        # front wheel
+        wheelfront_center_x = end_xy[0] + front_dist * np.cos(end_theta)
+        wheelfront_center_y = end_xy[1] + front_dist * np.sin(end_theta)
+        wheelfront = plt.Rectangle((
+            wheelfront_center_x - wheel_height / 2 * np.cos(end_theta + end_delta) + wheel_width / 2 * np.sin(end_theta + end_delta),
+            wheelfront_center_y - wheel_height / 2 * np.sin(end_theta + end_delta) - wheel_width / 2 * np.cos(end_theta + end_delta)
+        ), wheel_height, wheel_width, color='gold', angle=np.degrees(end_theta + end_delta))
+        ax.add_patch(wheelfront)
 
-        wheel_left_center = np.array(end_xy, dtype=float) + wheel_offset * lat
-        wheel_right_center = np.array(end_xy, dtype=float) - wheel_offset * lat
 
-        wheel_left = plt.Polygon(_wheel_polygon(wheel_left_center), closed=True,  color="gold", ec="black", lw=0.8,alpha=robot_alpha,zorder=6,)
-        wheel_right = plt.Polygon(_wheel_polygon(wheel_right_center),closed=True, color="gold", ec="black", lw=0.8, alpha=robot_alpha, zorder=6,)
-        ax.add_patch(wheel_left)
-        ax.add_patch(wheel_right)
+
+        # wheel_length = 0.20
+        # wheel_width = 0.08
+        # wheel_offset = robot_r + 0.05
+
+        # c = np.cos(end_theta)
+        # s = np.sin(end_theta)
+        # fwd = np.array([c, s], dtype=float)
+        # lat = np.array([-s, c], dtype=float)
+
+        # def _wheel_polygon(center_xy):
+        #     center = np.array(center_xy, dtype=float)
+        #     p1 = center - 0.5 * wheel_length * fwd - 0.5 * wheel_width * lat
+        #     p2 = center + 0.5 * wheel_length * fwd - 0.5 * wheel_width * lat
+        #     p3 = center + 0.5 * wheel_length * fwd + 0.5 * wheel_width * lat
+        #     p4 = center - 0.5 * wheel_length * fwd + 0.5 * wheel_width * lat
+        #     return np.vstack([p1, p2, p3, p4])
+
+        # wheel_left_center = np.array(end_xy, dtype=float) + wheel_offset * lat
+        # wheel_right_center = np.array(end_xy, dtype=float) - wheel_offset * lat
+
+        # wheel_left = plt.Polygon(_wheel_polygon(wheel_left_center), closed=True,  color="gold", ec="black", lw=0.8,alpha=robot_alpha,zorder=6,)
+        # wheel_right = plt.Polygon(_wheel_polygon(wheel_right_center),closed=True, color="gold", ec="black", lw=0.8, alpha=robot_alpha, zorder=6,)
+        # ax.add_patch(wheel_left)
+        # ax.add_patch(wheel_right)
 
 
     pad = 0.35
