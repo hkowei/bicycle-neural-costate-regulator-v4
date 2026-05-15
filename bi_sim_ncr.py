@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 from config import T_sim, total_steps_sim, dt, CONN_HIDDEN_DIMS, n, h, epoch
-from bi_utils_debug import bicycle_solve_qp, rk4, save_animation
+from bi_utils_debug import bicycle_solve_qp, rk4, save_animation, save_animation_bicycle_trajectory, save_bicycle_final_shot
 import time    # 这里导入 time 模块是为了计算 NCR 的仿真时间，看看它的效率如何。
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f'Using device: {device}')
@@ -178,3 +178,10 @@ save_animation(t_span, x_traj, y_traj, theta_traj, speed_traj,
                costate_trajectory, initial_state_option)
 
 
+# ================== Robot animation of bicycle ==================
+fig_name = f'bi_robot_animation_ncr_N{n}_h{h}_{initial_state_option}.gif'
+save_animation_bicycle_trajectory(x_robot=x_traj, y_robot=y_traj, theta_robot=theta_traj, beta_robot=u_beta_traj, initial_state_option = initial_state_option, gif_name = fig_name, start_xy=None, goal_xy=None, obstacles=None,
+                                       robot_r=0.25, margin=0.05)
+file_name = f'bi_robot_final_shot_ncr_N{n}_h{h}_{initial_state_option}.png'
+save_bicycle_final_shot(x_robot=x_traj, y_robot=y_traj, u_beta_robot=u_beta_traj, file_name=file_name, start_xy=None, goal_xy=None, theta_robot=None, obstacles=None, robot_r=0.25, margin=0.05,
+    show_safety_boundary=True, draw_robot=True, robot_alpha=0.45,)
