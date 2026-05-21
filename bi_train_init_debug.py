@@ -48,7 +48,8 @@ def train_network(initial_states, n, h, q1, q2, q3, q4, r1, r2, model_save_path,
     dataset = InitialStateDataset(initial_states)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cpu')  # Force CPU for debugging
     print("Using device:", device)
     # Time span for integration
     t_span = torch.tensor([0, dt], dtype=torch.float32, device=device)
@@ -67,6 +68,8 @@ def train_network(initial_states, n, h, q1, q2, q3, q4, r1, r2, model_save_path,
     for epoch in range(epochs):     
         epoch_start = time.time()
         last_print_time = epoch_start
+        dyn_duration = 0
+        back_prop_duration = 0
         
         epoch_loss = 0
         epoch_lambda_loss = 0
@@ -81,10 +84,14 @@ def train_network(initial_states, n, h, q1, q2, q3, q4, r1, r2, model_save_path,
                     f"epoch {epoch+1}/{epochs}, "
                     f"batch {batch_idx}/{len(dataloader)}, "
                     f"elapsed {elapsed:.1f}s, "
-                    f"last 50 batches {interval:.1f}s",
+                    f"dynamics {dyn_duration:.1f}s, "
+                    f"backprop {back_prop_duration:.1f}s, "
+                    f"last 200 batches {interval:.1f}s",
                     flush=True
                 )
                 last_print_time = now
+                dyn_duration = 0
+                back_prop_duration = 0
             
             optimizer.zero_grad()                                # 将模型的梯度清零，为当前 batch 的训练做准备
             state_0 = state_0.to(device)
@@ -118,15 +125,21 @@ def train_network(initial_states, n, h, q1, q2, q3, q4, r1, r2, model_save_path,
                 L_stage += state_cost + control_cost
 
                 # Solve the initial value problem using odeint (Step simulation forward by dt)
+                dyn_start_time = time.time()
                 z_and_u = torch.cat([state_k, u_opt], dim=1).to(device)
                 result = odeint(ode_solver, z_and_u, t_span, method='rk4')    # odesolver即是bicycle dynamics
                 state_k = result[-1,:,:4]                               # 这里的state_k 是 1,4 的 tensor，代表下一时刻的状态。result只取前四位的状态变量
+                dyn_end_time = time.time()
+                dyn_duration += dyn_end_time - dyn_start_time
 
             # Compute L_terminal
             L_terminal = state_k @ H @ state_k.T
             # Backpropagation
             loss = L_stage + L_terminal + beta*lambda_cost
+            back_prop_start_time = time.time()
             loss.backward()                            # 如果之前没有写 optimizer.zero_grad()，那么每次调用 loss.backward() 的时候，梯度会累积起来，这样就会导致模型的参数更新不正确。
+            back_prop_end_time = time.time()
+            back_prop_duration += back_prop_end_time - back_prop_start_time
             optimizer.step()
             epoch_loss += loss.item()                  # item: tensor 变 scalar
             epoch_lambda_loss += lambda_cost.item()

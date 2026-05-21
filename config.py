@@ -16,8 +16,8 @@ rear_dist = 0.5 # Distance from rear axle to center of gravity, used in Bicycle 
 
 r1 = 1.0; r2 = 1.0; q1 = 10.0; q2 = 10.0; q3 = 10; q4 = 10; h = 50
 
-n = 5 # Prediction hoirzon
+n = 30 # Prediction hoirzon
 N = n
-CONN_HIDDEN_DIMS = [16, 16, 16]
+CONN_HIDDEN_DIMS = [64, 128, 64]
 Nsample = 5
 epoch = 25
