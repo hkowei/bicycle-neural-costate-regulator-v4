@@ -4,7 +4,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
 from torchdiffeq import odeint # Use odeint for integration
 import numpy as np
-from bi_utils_debug import BicycleDynamics, set_seed
+from bi_utils_debug import BicycleDynamics, set_seed, train_rk4
 from config import dt, beta, rear_dist, CONN_HIDDEN_DIMS, q1, q2, q3, q4, r1, r2, n, h, epoch, Nsample
 from torchdiffeq import odeint
 import time
@@ -126,9 +126,20 @@ def train_network(initial_states, n, h, q1, q2, q3, q4, r1, r2, model_save_path,
 
                 # Solve the initial value problem using odeint (Step simulation forward by dt)
                 dyn_start_time = time.time()
-                z_and_u = torch.cat([state_k, u_opt], dim=1).to(device)
-                result = odeint(ode_solver, z_and_u, t_span, method='rk4')    # odesolver即是bicycle dynamics
-                state_k = result[-1,:,:4]                               # 这里的state_k 是 1,4 的 tensor，代表下一时刻的状态。result只取前四位的状态变量
+                use_torchdiffeq = False
+                if use_torchdiffeq:
+                    z_and_u = torch.cat([state_k, u_opt], dim=1).to(device)
+                    result = odeint(ode_solver, z_and_u, t_span, method='rk4')    # odesolver即是bicycle dynamics
+                    # temporary comparison with handwritten RK4
+                    # if i == 0 and batch_idx % 50 == 0:
+                    #     state_new = train_rk4(state_k, u_opt)
+                    #     state_k = result[-1,:,:4]
+                    #     print("state_torchdiffeq =", state_k)
+                    #     print("state_myrk4 =", state_new)
+                    #     print("max diff =", torch.max(torch.abs(state_k - state_new)))
+                    state_k = result[-1,:,:4]                               # 这里的state_k 是 1,4 的 tensor，代表下一时刻的状态。result只取前四位的状态变量
+                else:
+                    state_k = train_rk4(state_k, u_opt)
                 dyn_end_time = time.time()
                 dyn_duration += dyn_end_time - dyn_start_time
 

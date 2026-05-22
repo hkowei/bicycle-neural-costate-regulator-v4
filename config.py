@@ -10,7 +10,7 @@ u_beta_max = 0.28
 T_sim = 15
 total_steps_sim = int(T_sim/dt)
 # Regularized co-state loss
-beta = 0.1
+beta = 0.99
 
 rear_dist = 0.5 # Distance from rear axle to center of gravity, used in Bicycle dynamics
 

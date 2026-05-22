@@ -41,6 +41,23 @@ class BicycleDynamics(torch.nn.Module):                         # pytorch 版本
         dzdt = dzdt.unsqueeze(0)
         return dzdt
 
+def train_dynamics(z, u):
+    theta, speed = z[:, 2], z[:, 3]
+    u_a, u_beta = u[:, 0], u[:, 1]
+    x_dot = speed * torch.cos(theta) - speed * torch.sin(theta) * u_beta
+    y_dot = speed * torch.sin(theta) + speed * torch.cos(theta) * u_beta
+    theta_dot = speed/rear_dist * u_beta
+    speed_dot = u_a
+    return torch.stack([x_dot, y_dot, theta_dot, speed_dot], dim=1)
+
+def train_rk4(z, u):
+    k1 = train_dynamics(z, u)
+    k2 = train_dynamics(z + dt / 2 * k1, u)
+    k3 = train_dynamics(z + dt / 2 * k2, u)
+    k4 = train_dynamics(z + dt * k3, u)
+    z_next = z + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
+    return z_next
+
 def plot_traj(state_mpc, u_mpc, time, h, option):
     import os
     os.makedirs("./figs", exist_ok=True)
