@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
-from config import dt, N, u_a_max, u_a_min, u_beta_max, u_beta_min, T_sim, total_steps_sim, rear_dist, r1, r2
+from config import dt, N, u_a_max, u_a_min, u_omega_max, u_omega_min, T_sim, total_steps_sim, rear_dist, r1, r2, bi_scaling
 import casadi as ca
 import torch
 import random
@@ -141,8 +141,8 @@ def bicycle_solve_qp(lambda_x, lambda_y, lambda_theta, lambda_speed, theta, spee
 
     # Set bounds for the decision variables
 
-    lbx = [u_a_min, u_beta_min]  # Lower bounds for [u_a, u_beta]
-    ubx = [u_a_max, u_beta_max]  # Upper bounds for [u_a, u_beta]
+    lbx = [u_a_min, u_omega_min]  # Lower bounds for [u_a, u_omega]
+    ubx = [u_a_max, u_omega_max]  # Upper bounds for [u_a, u_omega]
 
     opts = {
     'printLevel': 'none'  # Suppress solver output for qpoases
@@ -288,8 +288,8 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, beta_robot,
     # Draw the robot components
     # robot_body = plt.Circle((0, 0), 0.25, color='cyan', fill=True, linewidth=2)  # Robot circular base   #was 0.25
     robot_body, = ax.plot([-rear_dist, front_dist], [0, 0], color="black", linewidth=3)
-    wheel_width = 0.2
-    wheel_height = 0.6
+    wheel_width = 0.2*bi_scaling
+    wheel_height = 0.6*bi_scaling
 
     wheelrear = plt.Rectangle((-rear_dist-wheel_height / 2, -wheel_width / 2), wheel_height, wheel_width, color='gold')  # Left wheel
     wheelfront = plt.Rectangle((front_dist-wheel_height / 2, -wheel_width / 2), wheel_height, wheel_width, color='gold')  # Right wheel
@@ -307,8 +307,8 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, beta_robot,
     # Add the black solid circles to represent obstacles
     # start_marker_xy = plt.Circle((start_pos[0], start_pos[1]), 0.2, color='green', fill=True, label="Start")
     # goal_marker_xy = plt.Circle((end_pos[0], end_pos[1]), 0.2, color='red', fill=True, label="Goal")
-    start_marker_xy = plt.Circle(start_xy, 0.2, color='green', fill=True, label="Start")
-    goal_marker_xy = plt.Circle(goal_xy, 0.2, color='red', fill=True, label="Goal")
+    start_marker_xy = plt.Circle(start_xy, 0.2*bi_scaling, color='green', fill=True, label="Start")
+    goal_marker_xy = plt.Circle(goal_xy, 0.2*bi_scaling, color='red', fill=True, label="Goal")
     ax.add_patch(start_marker_xy)
     ax.add_patch(goal_marker_xy)
     # Add a dynamic trajectory line
@@ -429,8 +429,8 @@ def save_bicycle_final_shot(x_robot, y_robot, u_beta_robot, file_name, start_xy=
         robot_body, = ax.plot([end_xy[0] - rear_dist * np.cos(end_theta), end_xy[0] + front_dist * np.cos(end_theta)],
                             [end_xy[1] - rear_dist * np.sin(end_theta), end_xy[1] + front_dist * np.sin(end_theta)], color="black", linewidth=3)
 
-        wheel_width = 0.2
-        wheel_height = 0.6
+        wheel_width = 0.2*bi_scaling
+        wheel_height = 0.6*bi_scaling
 
         # rear wheel
         wheelrear_center_x = end_xy[0] - rear_dist * np.cos(end_theta)

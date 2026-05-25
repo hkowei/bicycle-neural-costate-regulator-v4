@@ -5,7 +5,7 @@ import torch.nn as nn
 from torchdiffeq import odeint # Use odeint for integration
 import numpy as np
 from bi_utils_debug import BicycleDynamics, set_seed, train_rk4
-from config import dt, beta, rear_dist, CONN_HIDDEN_DIMS, q1, q2, q3, q4, r1, r2, n, h, epoch, Nsample, batch_size, Nsample1, Nsample2, Nsample3, Nsample4
+from config import dt, beta, rear_dist, CONN_HIDDEN_DIMS, q1, q2, q3, q4, r1, r2, n, h1, h2, h3, h4, epoch, batch_size, Nsample1, Nsample2, Nsample3, Nsample4, x_bound, y_bound, theta_bound, speed_bound, lr
 from torchdiffeq import odeint
 import time
 
@@ -43,7 +43,7 @@ class CoNN(nn.Module):
 
 
 # Training Setup
-def train_network(initial_states, n, h, q1, q2, q3, q4, r1, r2, model_save_path, batch_size=1, epochs=50, lr=2e-4):
+def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, model_save_path, batch_size=1, epochs=50, lr=2e-4):
 
     dataset = InitialStateDataset(initial_states)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
@@ -63,7 +63,8 @@ def train_network(initial_states, n, h, q1, q2, q3, q4, r1, r2, model_save_path,
     # Define cost matrices
     Q = torch.diag(torch.tensor([q1, q2, q3, q4], device=device))  # State cost 现在有四个变量
     R = torch.diag(torch.tensor([r1, r2], device=device))      # Control input cost
-    H =  h*Q                                                   # Terminal cost，保留，不必修改
+    # H =  h*Q                                                   # Terminal cost，保留，不必修改
+    H = torch.diag(torch.tensor([h1, h2, h3, h4], device=device))
 
     for epoch in range(epochs):     
         epoch_start = time.time()
@@ -177,10 +178,10 @@ if __name__ == '__main__':                 # 如果直接运行 train.py，就�
 
     # Step 1: Generate 1000 combinations of (x, y, theta)
     # Nsample = 2
-    x_range = np.linspace(-2, 2, Nsample1)                  # -2 到 2，取Nsample个点
-    y_range = np.linspace(-2, 2, Nsample2)
-    theta_range = np.linspace(-2, 2, Nsample3)
-    speed_range = np.linspace(-2, 2, Nsample4)
+    x_range = np.linspace(-x_bound, x_bound, Nsample1)                  # -2 到 2，取Nsample个点
+    y_range = np.linspace(-y_bound, y_bound, Nsample2)
+    theta_range = np.linspace(-theta_bound, theta_bound, Nsample3)
+    speed_range = np.linspace(-speed_bound, speed_bound, Nsample4)
 
     # Create a grid of all combinations
     x, y, theta, speed = np.meshgrid(x_range, y_range, theta_range, speed_range)
@@ -191,5 +192,5 @@ if __name__ == '__main__':                 # 如果直接运行 train.py，就�
     
     # Train the model
     # q1 = 10.0; q2 = 10.0; q3 = 10.0; q4 = 10.0; r1 = 1.0; r2 = 1.0    # may need to import from config later
-    model_save_path = f"./model/bi_t0_ncr_N{n}_h{h}_seed_{seed}_e{epoch}.pth"
-    train_network(initial_states, n, h, q1, q2, q3, q4, r1, r2, model_save_path, batch_size=batch_size, epochs=epoch, lr=1e-3)
+    model_save_path = f"./model/bi_t0_ncr_N{n}_seed_{seed}_e{epoch}.pth"
+    train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, model_save_path, batch_size=batch_size, epochs=epoch, lr=lr)

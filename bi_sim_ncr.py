@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
-from config import T_sim, total_steps_sim, dt, CONN_HIDDEN_DIMS, n, h, epoch
+from config import T_sim, total_steps_sim, dt, CONN_HIDDEN_DIMS, n, epoch, case, state_0a, state_0b, x_ref, y_ref, theta_ref, speed_ref
 from bi_utils_debug import bicycle_solve_qp, rk4, save_animation, save_animation_bicycle_trajectory, save_bicycle_final_shot
 import time    # 这里导入 time 模块是为了计算 NCR 的仿真时间，看看它的效率如何。
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -34,19 +34,19 @@ class CoNN(nn.Module):
 seed = 0
 model = CoNN(n).to(device)
 
-model_name = f'bi_t0_ncr_N{n}_h{h}_seed_{seed}_e{epoch}.pth' # full horizon abs lambda loss
+model_name = f'bi_t0_ncr_N{n}_seed_{seed}_e{epoch}.pth' # full horizon abs lambda loss
 print(f'load model: {model_name}')
 model.load_state_dict(torch.load(f'./model/{model_name}'))
 model.eval()
 
 # Define the initial condition and total time steps
-state_0a = np.array([[-1.16, 1.37, -1.79, 0.5]])
-state_0b = np.array([[-5.24, 4.11, 2.72, 0.5]])   # speed_0待定
+# state_0a = np.array([[-1.16, 1.37, -1.79, 0.5]])
+# state_0b = np.array([[-5.24, 4.11, 2.72, 0.5]])   # speed_0待定
 state_0c = state_0b
 t_span = np.linspace(0, T_sim, total_steps_sim+1)
 
 # Change case to a, b or c here
-initial_state_option = 'a'
+initial_state_option = case
 if initial_state_option == 'a':
     state_0 = state_0a
 elif initial_state_option == 'b':
@@ -54,7 +54,7 @@ elif initial_state_option == 'b':
 else:
     state_0 = state_0c
     # Define reference state
-    x_ref = 1; y_ref = 1; theta_ref = 0; speed_ref = 0 # speed_ref待定
+    # x_ref = 1; y_ref = 1; theta_ref = 0; speed_ref = 0 # speed_ref待定
 
 
 # Simulate the state trajectory using the CoNN-based controller in a feedback loop (without disturbance)
@@ -162,7 +162,7 @@ plt.grid(True)
 plt.xticks(fontsize=24, fontweight='bold')
 plt.yticks(fontsize=24, fontweight='bold')
 plt.tight_layout()
-output_dir = f"./bi_figs/bi_ncr_N{n}_h{h}_{initial_state_option}.png"
+output_dir = f"./bi_figs/bi_ncr_N{n}_{initial_state_option}.png"
 plt.savefig(output_dir, dpi=300)
 plt.close()
 
@@ -179,9 +179,9 @@ save_animation(t_span, x_traj, y_traj, theta_traj, speed_traj,
 
 
 # ================== Robot animation of bicycle ==================
-fig_name = f'bi_robot_animation_ncr_N{n}_h{h}_{initial_state_option}.gif'
+fig_name = f'bi_robot_animation_ncr_N{n}_{initial_state_option}.gif'
 save_animation_bicycle_trajectory(x_robot=x_traj, y_robot=y_traj, theta_robot=theta_traj, beta_robot=u_beta_traj, initial_state_option = initial_state_option, gif_name = fig_name, start_xy=None, goal_xy=None, obstacles=None,
                                        robot_r=0.25, margin=0.05)
-file_name = f'bi_robot_final_shot_ncr_N{n}_h{h}_{initial_state_option}.png'
-save_bicycle_final_shot(x_robot=x_traj, y_robot=y_traj, u_beta_robot=u_beta_traj, file_name=file_name, start_xy=None, goal_xy=None, theta_robot=None, obstacles=None, robot_r=0.25, margin=0.05,
-    show_safety_boundary=True, draw_robot=True, robot_alpha=0.45,)
+# file_name = f'bi_robot_final_shot_ncr_N{n}_{initial_state_option}.png'
+# save_bicycle_final_shot(x_robot=x_traj, y_robot=y_traj, u_beta_robot=u_beta_traj, file_name=file_name, start_xy=None, goal_xy=None, theta_robot=None, obstacles=None, robot_r=0.25, margin=0.05,
+#     show_safety_boundary=True, draw_robot=True, robot_alpha=0.45,)
