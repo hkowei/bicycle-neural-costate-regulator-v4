@@ -46,7 +46,7 @@ state_0c = state_0b
 t_span = np.linspace(0, T_sim, total_steps_sim+1)
 
 # Change case to a, b or c here
-initial_state_option = 'c'
+initial_state_option = 'a'
 if initial_state_option == 'a':
     state_0 = state_0a
 elif initial_state_option == 'b':

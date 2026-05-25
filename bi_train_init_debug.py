@@ -5,7 +5,7 @@ import torch.nn as nn
 from torchdiffeq import odeint # Use odeint for integration
 import numpy as np
 from bi_utils_debug import BicycleDynamics, set_seed, train_rk4
-from config import dt, beta, rear_dist, CONN_HIDDEN_DIMS, q1, q2, q3, q4, r1, r2, n, h, epoch, Nsample
+from config import dt, beta, rear_dist, CONN_HIDDEN_DIMS, q1, q2, q3, q4, r1, r2, n, h, epoch, Nsample, batch_size, Nsample1, Nsample2, Nsample3, Nsample4
 from torchdiffeq import odeint
 import time
 
@@ -48,8 +48,8 @@ def train_network(initial_states, n, h, q1, q2, q3, q4, r1, r2, model_save_path,
     dataset = InitialStateDataset(initial_states)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
-    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    device = torch.device('cpu')  # Force CPU for debugging
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # device = torch.device('cpu')  # Force CPU for debugging
     print("Using device:", device)
     # Time span for integration
     t_span = torch.tensor([0, dt], dtype=torch.float32, device=device)
@@ -103,23 +103,24 @@ def train_network(initial_states, n, h, q1, q2, q3, q4, r1, r2, model_save_path,
             lambda_cost = 0
 
             for i in range(n):                                                  # 迭代预测的每一个时间步，计算对应的控制输入和阶段成本
-                lambdax_i = costate_traj_k_hat[0,i,0]
-                lambday_i = costate_traj_k_hat[0,i,1]
-                lambdatheta_i = costate_traj_k_hat[0,i,2]
-                lambdaspeed_i = costate_traj_k_hat[0,i,3]
-                theta_i = state_k[0, 2]                     # 取当前状态的角度 theta，因为state_k 是 1,4 的 tensor，所以 state_k[0,2] 就是 theta 的值，state_k[0,3]是speed的值
-                speed_i = state_k[0, 3]
+                lambdax_i = costate_traj_k_hat[:,i,0]
+                lambday_i = costate_traj_k_hat[:,i,1]
+                lambdatheta_i = costate_traj_k_hat[:,i,2]
+                lambdaspeed_i = costate_traj_k_hat[:,i,3]
+                theta_i = state_k[:, 2]                     # 取当前状态的角度 theta，因为state_k 是 1,4 的 tensor，所以 state_k[0,2] 就是 theta 的值，state_k[0,3]是speed的值
+                speed_i = state_k[:, 3]
 
                 # 查看公式3.1， 用costate来计算最优控制
                 u_a_opt  = -0.5 * lambdaspeed_i/r1        
                 u_beta_opt = -0.5/r2 * ( -lambdax_i * speed_i * torch.sin(theta_i)
                             + lambday_i * speed_i * torch.cos(theta_i) + lambdatheta_i * speed_i/rear_dist)
-                u_opt = torch.cat([u_a_opt.unsqueeze(0), u_beta_opt.unsqueeze(0)], dim=0).unsqueeze(0)
+                # u_opt = torch.cat([u_a_opt_B.unsqueeze(0), u_beta_opt_B.unsqueeze(0)], dim=0).unsqueeze(0)
+                u_opt = torch.stack([u_a_opt, u_beta_opt], dim=1) # (B, 2))
 
 
                 # Compute stage cost using matrices
-                state_cost = state_k @ Q @ state_k.T   # Quadratic cost for state
-                control_cost = u_opt @ R @ u_opt.T     # Quadratic cost for control inputs
+                state_cost = (state_k @ Q * state_k).sum(dim=1)   # Quadratic cost for state
+                control_cost = (u_opt @ R * u_opt).sum(dim=1)     # Quadratic cost for control inputs
                 
                 lambda_cost += torch.abs(lambdax_i) + torch.abs(lambday_i) + torch.abs(lambdatheta_i) + torch.abs(lambdaspeed_i)
                 L_stage += state_cost + control_cost
@@ -144,16 +145,17 @@ def train_network(initial_states, n, h, q1, q2, q3, q4, r1, r2, model_save_path,
                 dyn_duration += dyn_end_time - dyn_start_time
 
             # Compute L_terminal
-            L_terminal = state_k @ H @ state_k.T
+            L_terminal = (state_k @ H * state_k).sum(dim=1)
             # Backpropagation
-            loss = L_stage + L_terminal + beta*lambda_cost
+            loss_B = L_stage + L_terminal + beta*lambda_cost
+            loss = loss_B.mean()  # Average over the batch
             back_prop_start_time = time.time()
             loss.backward()                            # 如果之前没有写 optimizer.zero_grad()，那么每次调用 loss.backward() 的时候，梯度会累积起来，这样就会导致模型的参数更新不正确。
             back_prop_end_time = time.time()
             back_prop_duration += back_prop_end_time - back_prop_start_time
             optimizer.step()
-            epoch_loss += loss.item()                  # item: tensor 变 scalar
-            epoch_lambda_loss += lambda_cost.item()
+            epoch_loss += loss_B.sum().item()                  # item: tensor 变 scalar
+            epoch_lambda_loss += lambda_cost.sum().item()
             
 
         avg_loss = epoch_loss / len(dataset)
@@ -175,10 +177,10 @@ if __name__ == '__main__':                 # 如果直接运行 train.py，就�
 
     # Step 1: Generate 1000 combinations of (x, y, theta)
     # Nsample = 2
-    x_range = np.linspace(-2, 2, 7)                  # -2 到 2，取Nsample个点
-    y_range = np.linspace(-2, 2, 7)
-    theta_range = np.linspace(-2, 2, Nsample)
-    speed_range = np.linspace(-2, 2, Nsample)
+    x_range = np.linspace(-2, 2, Nsample1)                  # -2 到 2，取Nsample个点
+    y_range = np.linspace(-2, 2, Nsample2)
+    theta_range = np.linspace(-2, 2, Nsample3)
+    speed_range = np.linspace(-2, 2, Nsample4)
 
     # Create a grid of all combinations
     x, y, theta, speed = np.meshgrid(x_range, y_range, theta_range, speed_range)
@@ -190,4 +192,4 @@ if __name__ == '__main__':                 # 如果直接运行 train.py，就�
     # Train the model
     # q1 = 10.0; q2 = 10.0; q3 = 10.0; q4 = 10.0; r1 = 1.0; r2 = 1.0    # may need to import from config later
     model_save_path = f"./model/bi_t0_ncr_N{n}_h{h}_seed_{seed}_e{epoch}.pth"
-    train_network(initial_states, n, h, q1, q2, q3, q4, r1, r2, model_save_path, epochs=epoch, lr=1e-3)
+    train_network(initial_states, n, h, q1, q2, q3, q4, r1, r2, model_save_path, batch_size=batch_size, epochs=epoch, lr=1e-3)
