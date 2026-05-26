@@ -274,6 +274,13 @@ def print_config():
     else:
         state0_str = "unknown"
 
+    final_state_str = (
+        f"{x_traj[-1]:.2f},"
+        f"{y_traj[-1]:.2f},"
+        f"{theta_traj[-1]:.2f},"
+        f"{speed_traj[-1]:.2f}"
+    )
+
     csv_row = (
         f"{n},{epoch},{beta},{batch_size},"
         f"{R_str},{Q_str},{H_str},"
@@ -281,6 +288,7 @@ def print_config():
         f"{nn_str},{lr},{bi_scaling},{rear_dist},"
         f"{um_str},{case},"
         f"\"{state0_str}\",\"{ref_str}\","
+        f"\"{final_state_str}\",{abs_convergence_err:.2f},"
     )
 
     print("CSV row:")
