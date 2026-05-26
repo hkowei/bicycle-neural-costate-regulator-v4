@@ -256,6 +256,10 @@ def print_config():
     print("Simulation:")
     print(simulation_info)
 
+    with open("rundata.txt", "w", encoding="utf-8") as f:
+        f.write(training_info + "\n")
+    with open("simdata.txt", "w", encoding="utf-8") as f:
+        f.write(simulation_info + "\n")
 
     # CSV format for runs_index.csv
     R_str = f"{r1}-{r2}"
