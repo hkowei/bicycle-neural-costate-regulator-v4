@@ -4,7 +4,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
 from torchdiffeq import odeint # Use odeint for integration
 import numpy as np
-from bi_utils_debug import BicycleDynamics, set_seed, train_rk4
+from bi_utils_debug import set_seed, train_rk4
 from config import dt, beta, rear_dist, CONN_HIDDEN_DIMS, q1, q2, q3, q4, r1, r2, n, h1, h2, h3, h4, epoch, batch_size, Nsample1, Nsample2, Nsample3, Nsample4, x_bound, y_bound, theta_bound, speed_bound, lr
 from torchdiffeq import odeint
 import time
@@ -53,7 +53,7 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
     print("Using device:", device)
     # Time span for integration
     t_span = torch.tensor([0, dt], dtype=torch.float32, device=device)
-    ode_solver = BicycleDynamics()
+    # ode_solver = BicycleDynamics()
 
     # Initialize NN
     model = CoNN(n).to(device)
@@ -112,11 +112,10 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
                 speed_i = state_k[:, 3]
 
                 # 查看公式3.1， 用costate来计算最优控制
-                u_a_opt  = -0.5 * lambdaspeed_i/r1        
-                u_beta_opt = -0.5/r2 * ( -lambdax_i * speed_i * torch.sin(theta_i)
-                            + lambday_i * speed_i * torch.cos(theta_i) + lambdatheta_i * speed_i/rear_dist)
+                u_a_opt     = -0.5/r1 * lambdaspeed_i
+                u_omega_opt =  0.5/r2 * (lambdax_i * rear_dist * torch.sin(theta_i) - lambday_i * rear_dist * torch.cos(theta_i) - lambdatheta_i)   
                 # u_opt = torch.cat([u_a_opt_B.unsqueeze(0), u_beta_opt_B.unsqueeze(0)], dim=0).unsqueeze(0)
-                u_opt = torch.stack([u_a_opt, u_beta_opt], dim=1) # (B, 2))
+                u_opt = torch.stack([u_a_opt, u_omega_opt], dim=1) # (B, 2))
 
 
                 # Compute stage cost using matrices
@@ -127,23 +126,23 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
                 L_stage += state_cost + control_cost
 
                 # Solve the initial value problem using odeint (Step simulation forward by dt)
-                dyn_start_time = time.time()
-                use_torchdiffeq = False
-                if use_torchdiffeq:
-                    z_and_u = torch.cat([state_k, u_opt], dim=1).to(device)
-                    result = odeint(ode_solver, z_and_u, t_span, method='rk4')    # odesolver即是bicycle dynamics
-                    # temporary comparison with handwritten RK4
-                    # if i == 0 and batch_idx % 50 == 0:
-                    #     state_new = train_rk4(state_k, u_opt)
-                    #     state_k = result[-1,:,:4]
-                    #     print("state_torchdiffeq =", state_k)
-                    #     print("state_myrk4 =", state_new)
-                    #     print("max diff =", torch.max(torch.abs(state_k - state_new)))
-                    state_k = result[-1,:,:4]                               # 这里的state_k 是 1,4 的 tensor，代表下一时刻的状态。result只取前四位的状态变量
-                else:
-                    state_k = train_rk4(state_k, u_opt)
-                dyn_end_time = time.time()
-                dyn_duration += dyn_end_time - dyn_start_time
+                # dyn_start_time = time.time()
+                # use_torchdiffeq = False
+                # if use_torchdiffeq:
+                #     z_and_u = torch.cat([state_k, u_opt], dim=1).to(device)
+                #     result = odeint(ode_solver, z_and_u, t_span, method='rk4')    # odesolver即是bicycle dynamics
+                #     # temporary comparison with handwritten RK4
+                #     # if i == 0 and batch_idx % 50 == 0:
+                #     #     state_new = train_rk4(state_k, u_opt)
+                #     #     state_k = result[-1,:,:4]
+                #     #     print("state_torchdiffeq =", state_k)
+                #     #     print("state_myrk4 =", state_new)
+                #     #     print("max diff =", torch.max(torch.abs(state_k - state_new)))
+                #     state_k = result[-1,:,:4]                               # 这里的state_k 是 1,4 的 tensor，代表下一时刻的状态。result只取前四位的状态变量
+                # else:
+                state_k = train_rk4(state_k, u_opt)
+                # dyn_end_time = time.time()
+                # dyn_duration += dyn_end_time - dyn_start_time
 
             # Compute L_terminal
             L_terminal = (state_k @ H * state_k).sum(dim=1)

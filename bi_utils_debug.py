@@ -7,46 +7,46 @@ import torch
 import random
 import os
 
-class BicycleDynamics(torch.nn.Module):                         # pytorch 版本的dynamics，训练用
-    def __init__(self):
-        super(BicycleDynamics, self).__init__()
+# class BicycleDynamics(torch.nn.Module):                         # pytorch 版本的dynamics，训练用
+#     def __init__(self):
+#         super(BicycleDynamics, self).__init__()
 
-    def forward(self, t, z_and_u):
-        """
-        Args (Bicycle):
-            t: time (required by torchdiffeq, even if not used)
-            z_and_u: concatenated state [x, y, theta, speed] and control [a, beta] (torch tensor)
-            rear_dist: distance from rear axle to center of gravity (constant parameter)
+#     def forward(self, t, z_and_u):
+#         """
+#         Args (Bicycle):
+#             t: time (required by torchdiffeq, even if not used)
+#             z_and_u: concatenated state [x, y, theta, speed] and control [a, beta] (torch tensor)
+#             rear_dist: distance from rear axle to center of gravity (constant parameter)
 
-        Returns:
-            dx/dt (torch tensor)
-        """
-        # Split state and control from concatenated tensor
-        z = z_and_u[0,:4]  # state [x, y, theta, speed]
-        u = z_and_u[0,4:]  # control input [a, beta]
+#         Returns:
+#             dx/dt (torch tensor)
+#         """
+#         # Split state and control from concatenated tensor
+#         z = z_and_u[0,:4]  # state [x, y, theta, speed]
+#         u = z_and_u[0,4:]  # control input [a, beta]
 
-        speed = z[3]
-        theta = z[2]
-        u_a = u[0]
-        u_beta = u[1]
+#         speed = z[3]
+#         theta = z[2]
+#         u_a = u[0]
+#         u_beta = u[1]
 
-        # Compute derivatives
-        x_dot = speed * torch.cos(theta) - speed * torch.sin(theta) * u_beta
-        y_dot = speed * torch.sin(theta) + speed * torch.cos(theta) * u_beta
-        theta_dot = speed/rear_dist * u_beta
-        speed_dot = u_a
-        dzdt = torch.stack([x_dot, y_dot, theta_dot, speed_dot, \
-                            torch.tensor(0.0, device=z.device), \
-                            torch.tensor(0.0, device=z.device)])    # 这里的dxdt 是一个 6 维的 tensor，前面四维是状态的导数，后面两维是控制输入的导数（因为控制输入在这个模型里是直接给定的，所以它们的导数是0）
-        dzdt = dzdt.unsqueeze(0)
-        return dzdt
+#         # Compute derivatives
+#         x_dot = speed * torch.cos(theta) - speed * torch.sin(theta) * u_beta
+#         y_dot = speed * torch.sin(theta) + speed * torch.cos(theta) * u_beta
+#         theta_dot = speed/rear_dist * u_beta
+#         speed_dot = u_a
+#         dzdt = torch.stack([x_dot, y_dot, theta_dot, speed_dot, \
+#                             torch.tensor(0.0, device=z.device), \
+#                             torch.tensor(0.0, device=z.device)])    # 这里的dxdt 是一个 6 维的 tensor，前面四维是状态的导数，后面两维是控制输入的导数（因为控制输入在这个模型里是直接给定的，所以它们的导数是0）
+#         dzdt = dzdt.unsqueeze(0)
+#         return dzdt
 
 def train_dynamics(z, u):
     theta, speed = z[:, 2], z[:, 3]
-    u_a, u_beta = u[:, 0], u[:, 1]
-    x_dot = speed * torch.cos(theta) - speed * torch.sin(theta) * u_beta
-    y_dot = speed * torch.sin(theta) + speed * torch.cos(theta) * u_beta
-    theta_dot = speed/rear_dist * u_beta
+    u_a, u_omega = u[:, 0], u[:, 1]
+    x_dot = speed * torch.cos(theta) - u_omega * rear_dist * torch.sin(theta)
+    y_dot = speed * torch.sin(theta) + u_omega * rear_dist * torch.cos(theta)
+    theta_dot = u_omega
     speed_dot = u_a
     return torch.stack([x_dot, y_dot, theta_dot, speed_dot], dim=1)
 
@@ -103,10 +103,10 @@ def plot_traj(state_mpc, u_mpc, time, h, option):
     
 def bicycle_dynamics(z, u):                                  # Numpy 版本的dynamics，仿真用
     theta, speed = z[0,2], z[0,3]
-    u_a, u_beta = u[0], u[1]
-    x_dot = speed * np.cos(theta) - speed * np.sin(theta) * u_beta
-    y_dot = speed * np.sin(theta) + speed * np.cos(theta) * u_beta
-    theta_dot = speed/rear_dist * u_beta
+    u_a, u_omega = u[0], u[1]
+    x_dot = speed * np.cos(theta) - u_omega * rear_dist * np.sin(theta)
+    y_dot = speed * np.sin(theta) + u_omega * rear_dist * np.cos(theta)
+    theta_dot = u_omega
     speed_dot = u_a
     return np.array([x_dot, y_dot, theta_dot, speed_dot])
 
@@ -123,18 +123,19 @@ def bicycle_solve_qp(lambda_x, lambda_y, lambda_theta, lambda_speed, theta, spee
 
     # Define decision variables
     u_a = ca.SX.sym('u_a')                                   # 数学写法是 argmin_v H(v, omega)，这里的v和omega是优化变量，所以用ca.SX.sym来定义符号变量
-    u_beta = ca.SX.sym('u_beta')
+    u_omega = ca.SX.sym('u_omega')
 
     # Define the Hamiltonian
-    H = (r1*u_a**2 + r2*u_beta**2 -
-        lambda_x * u_beta * speed * ca.sin(theta) +
-        lambda_y * u_beta * speed * ca.cos(theta) +
-        lambda_theta * u_beta * speed/rear_dist   +
-        lambda_speed * u_a)
+    H = (r1*u_a**2 + r2*u_omega**2 +
+        lambda_x * (-u_omega * rear_dist * ca.sin(theta)) +
+        lambda_y * ( u_omega * rear_dist * ca.cos(theta)) +
+        lambda_theta * u_omega + 
+        lambda_speed * u_a
+        )
 
     # Set up the QP problem
     qp = {
-        'x': ca.vertcat(u_a, u_beta),  # Decision variables [u_a, u_beta]
+        'x': ca.vertcat(u_a, u_omega),  # Decision variables [u_a, u_omega]
         'f': H,                    # Cost function (Hamiltonian)
         'g': ca.vertcat()          # No additional equality/inequality constraints
     }
@@ -155,8 +156,8 @@ def bicycle_solve_qp(lambda_x, lambda_y, lambda_theta, lambda_speed, theta, spee
 
     # Extract results
     u_a_opt = solution['x'][0]
-    u_beta_opt = solution['x'][1]
-    return u_a_opt, u_beta_opt
+    u_omega_opt = solution['x'][1]
+    return u_a_opt, u_omega_opt
 
 def set_seed(seed=42):
     random.seed(seed)
@@ -235,7 +236,7 @@ def save_animation(t_span, x_traj, y_traj, theta_traj, speed_traj, costate_traje
 # ==============================================================================
 
 # note: we need u_beta to calculate the heading of the bicycle
-def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, beta_robot, initial_state_option, gif_name, start_xy=None, goal_xy=None, obstacles=None,
+def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, speed_robot, omega_robot, initial_state_option, gif_name, start_xy=None, goal_xy=None, obstacles=None,
                                        robot_r=0.25, margin=0.05):
     os.makedirs("./bi_animation/bicycle", exist_ok=True)
     # if initial_state_option == 'a':
@@ -316,6 +317,8 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, beta_robot,
     ax.legend(loc="upper right",fontsize=20)
 
     # transform beta to delta
+    beta_robot = omega_robot * rear_dist / (speed_robot[:-1] + 1*1e-2)
+    beta_robot = np.clip(beta_robot, -0.8, 0.8)
     delta_robot = np.arctan(np.tan(beta_robot)*(rear_dist + front_dist)/rear_dist)
     if len(delta_robot) == len(x_robot) - 1:
         delta_robot = np.append(delta_robot, delta_robot[-1])

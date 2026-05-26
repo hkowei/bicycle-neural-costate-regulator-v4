@@ -3,19 +3,19 @@ import numpy as np
 
 dt = 0.05 # Sampling time
 # Total time of simulation and time steps
-T_sim = 15*2
+T_sim = 10*2
 total_steps_sim = int(T_sim/dt)
 
 
 # Training parameters
 n = 30 # Prediction hoirzon
 N = n
-epoch = 5
-beta = 0.99
+epoch = 70
+beta = 0.01
 batch_size = 100
 
-r1 = 3.0; r2 = 1.0; 
-q1 = 10.0; q2 = 10.0; q3 = 10; q4 = 10; 
+r1 = 0.5; r2 = 0.5; 
+q1 = 10.0; q2 = 20.0; q3 = 15; q4 = 10; 
 h1 = 10.0; h2 = 10.0; h3 = 10.0; h4 = 10.0
 
 Nsample1, Nsample2, Nsample3, Nsample4 = 10, 10, 10, 10
