@@ -185,3 +185,101 @@ save_animation_bicycle_trajectory(x_robot=x_traj, y_robot=y_traj, theta_robot=th
 # file_name = f'bi_robot_final_shot_ncr_N{n}_{initial_state_option}.png'
 # save_bicycle_final_shot(x_robot=x_traj, y_robot=y_traj, u_beta_robot=u_beta_traj, file_name=file_name, start_xy=None, goal_xy=None, theta_robot=None, obstacles=None, robot_r=0.25, margin=0.05,
 #     show_safety_boundary=True, draw_robot=True, robot_alpha=0.45,)
+
+# ================= Print Configuration ======================
+
+from config import (
+    n, epoch, beta, batch_size,
+    r1, r2,
+    q1, q2, q3, q4,
+    h1, h2, h3, h4,
+    Nsample1, Nsample2, Nsample3, Nsample4,
+    x_bound, y_bound, theta_bound, speed_bound,
+    CONN_HIDDEN_DIMS, lr,
+    bi_scaling, rear_dist,
+    u_a_min, u_a_max,
+    u_omega_min, u_omega_max,
+    case, state_0a, state_0b,
+    x_ref, y_ref, theta_ref, speed_ref
+)
+
+def print_config():
+    nn_str = "-".join(str(v) for v in CONN_HIDDEN_DIMS)
+
+    training_info = (
+        f"N{n}_e{epoch}_beta{beta}_B{batch_size}"
+        f"_R-{r1}-{r2}"
+        f"_Q-{q1}-{q2}-{q3}-{q4}"
+        f"_H-{h1}-{h2}-{h3}-{h4}"
+        f"_Nsample-{Nsample1}-{Nsample2}-{Nsample3}-{Nsample4}"
+        f"_Rsample-{x_bound}-{y_bound}-{theta_bound}-{speed_bound}"
+        f"_NN-{nn_str}"
+        f"_lr{lr}"
+        f"_scale{bi_scaling}"
+        f"_rear{rear_dist}"
+    )
+
+    if case == "a":
+        state0 = state_0a.flatten()
+        ref_str = "0,0,0,0"
+        sim_case_info = (
+            f"case-a_state0-{state0[0]}-{state0[1]}-{state0[2]}-{state0[3]}"
+            f"_ref-0-0-0-0"
+        )
+    elif case == "b":
+        state0 = state_0b.flatten()
+        ref_str = "0,0,0,0"
+        sim_case_info = (
+            f"case-b_state0-{state0[0]}-{state0[1]}-{state0[2]}-{state0[3]}"
+            f"_ref-0-0-0-0"
+        )
+    elif case == "c":
+        state0 = state_0b.flatten()
+        ref_str = f"{x_ref},{y_ref},{theta_ref},{speed_ref}"
+        sim_case_info = (
+            f"case-c_state0-{state0[0]}-{state0[1]}-{state0[2]}-{state0[3]}"
+            f"_ref-{x_ref}-{y_ref}-{theta_ref}-{speed_ref}"
+        )
+    else:
+        state0 = None
+        ref_str = "unknown"
+        sim_case_info = f"case-{case}_unknown"
+
+    simulation_info = (
+        f"um-{abs(u_a_min)}-{u_a_max}-{abs(u_omega_min)}-{u_omega_max}"
+        f"_{sim_case_info}"
+    )
+
+    print("========== Parameter information ==========")
+    print("Training model:")
+    print(training_info)
+    print("Simulation:")
+    print(simulation_info)
+
+
+    # CSV format for runs_index.csv
+    R_str = f"{r1}-{r2}"
+    Q_str = f"{q1}-{q2}-{q3}-{q4}"
+    H_str = f"{h1}-{h2}-{h3}-{h4}"
+    Nsample_str = f"{Nsample1}-{Nsample2}-{Nsample3}-{Nsample4}"
+    Rsample_str = f"{x_bound}-{y_bound}-{theta_bound}-{speed_bound}"
+    um_str = f"{abs(u_a_min)}-{u_a_max}-{abs(u_omega_min)}-{u_omega_max}"
+
+    if state0 is not None:
+        state0_str = f"{state0[0]},{state0[1]},{state0[2]},{state0[3]}"
+    else:
+        state0_str = "unknown"
+
+    csv_row = (
+        f"{n},{epoch},{beta},{batch_size},"
+        f"{R_str},{Q_str},{H_str},"
+        f"{Nsample_str},{Rsample_str},"
+        f"{nn_str},{lr},{bi_scaling},{rear_dist},"
+        f"{um_str},{case},"
+        f"\"{state0_str}\",\"{ref_str}\","
+    )
+
+    print("CSV row:")
+    print(csv_row)
+
+print_config()
