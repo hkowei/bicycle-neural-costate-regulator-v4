@@ -294,11 +294,13 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, speed_robot
 
     wheelrear = plt.Rectangle((-rear_dist-wheel_height / 2, -wheel_width / 2), wheel_height, wheel_width, color='gold')  # Left wheel
     wheelfront = plt.Rectangle((front_dist-wheel_height / 2, -wheel_width / 2), wheel_height, wheel_width, color='gold')  # Right wheel
+    front_wheel_dot = plt.Circle((front_dist + wheel_height / 2, 0), radius=0.03, color='black')
 
     # Add the robot components to the plot
     # ax.add_patch(robot_body)     # 这里改成了plot，所以不需要add_patch了
     ax.add_patch(wheelrear)
     ax.add_patch(wheelfront)
+    ax.add_patch(front_wheel_dot)
     
     # if i want to include heading arrow 
     # front_len = 0.35
@@ -317,8 +319,8 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, speed_robot
     ax.legend(loc="upper right",fontsize=20)
 
     # transform beta to delta
-    beta_robot = omega_robot * rear_dist / (speed_robot[:-1] + 1*1e-2)
-    beta_robot = np.clip(beta_robot, -0.8, 0.8)
+    beta_robot = omega_robot * rear_dist / (speed_robot[:-1] + 0.5)
+    # beta_robot = np.clip(beta_robot, -0.78, 0.78)
     delta_robot = np.arctan(np.tan(beta_robot)*(rear_dist + front_dist)/rear_dist)
     if len(delta_robot) == len(x_robot) - 1:
         delta_robot = np.append(delta_robot, delta_robot[-1])
@@ -352,6 +354,12 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, speed_robot
             wheelfront_center_y - wheel_height / 2 * np.sin(theta + delta) - wheel_width / 2 * np.cos(theta + delta)
         ))
         wheelfront.angle = np.degrees(theta + delta)
+
+        # update front wheel dot position
+        front_wheel_dot.set_center((
+            wheelfront_center_x + wheel_height / 2 * np.cos(theta + delta),
+            wheelfront_center_y + wheel_height / 2 * np.sin(theta + delta)
+        ))
         
         # Update the dynamic trajectory
         robot_path.set_data(x_robot[:frame], y_robot[:frame])  # Update only up to the current frame
