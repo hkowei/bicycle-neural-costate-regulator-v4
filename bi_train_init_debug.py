@@ -66,9 +66,20 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
     # H =  h*Q                                                   # Terminal cost，保留，不必修改
     H = torch.diag(torch.tensor([h1, h2, h3, h4], device=device))
 
-    for epoch in range(epochs):     
-        epoch_start = time.time()
-        last_print_time = epoch_start
+    epoch_start = time.time()
+
+    for epoch in range(epochs):   
+
+        if epoch == 1:
+            now = time.time()
+            first_epoch_time = now - epoch_start
+            est_tot = first_epoch_time * len(dataloader)
+            print(
+                f"First epoch runtime: {first_epoch_time/60:.2f} min, "
+                f"estimated total time: {est_tot/60:.2f} min",
+                flush=True
+            )
+
         dyn_duration = 0
         back_prop_duration = 0
         
@@ -77,22 +88,23 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
         # Iterate over all initial conditions
         # for state_0 in dataloader:                               # state_0 是从dataloader取出来的临时变量，代表一个 batch 的初始状态，这里 batch_size 是 1，所以是 (x, y, theta, speed)。state_0 的 shape 是 (1, 4)，因为 dataloader 会自动把它变成一个 batch 的形式，即使 batch_size 是 1。
         for batch_idx, state_0 in enumerate(dataloader):
-            if batch_idx % 200 == 0:
-                now = time.time()
-                elapsed = now - epoch_start
-                interval = now - last_print_time
-                print(
-                    f"epoch {epoch+1}/{epochs}, "
-                    f"batch {batch_idx}/{len(dataloader)}, "
-                    f"elapsed {elapsed:.1f}s, "
-                    f"dynamics {dyn_duration:.1f}s, "
-                    f"backprop {back_prop_duration:.1f}s, "
-                    f"last 200 batches {interval:.1f}s",
-                    flush=True
-                )
-                last_print_time = now
-                dyn_duration = 0
-                back_prop_duration = 0
+            # if batch_idx % 200 == 0:
+            #     now = time.time()
+            #     elapsed = now - epoch_start
+            #     interval = now - last_print_time
+            #     print(
+            #         f"epoch {epoch+1}/{epochs}, "
+            #         f"batch {batch_idx}/{len(dataloader)}, "
+            #         f"elapsed {elapsed:.1f}s, "
+            #         f"dynamics {dyn_duration:.1f}s, "
+            #         f"backprop {back_prop_duration:.1f}s, "
+            #         f"last 200 batches {interval:.1f}s",
+            #         flush=True
+            #     )
+            #     last_print_time = now
+            #     dyn_duration = 0
+            #     back_prop_duration = 0
+
             
             optimizer.zero_grad()                                # 将模型的梯度清零，为当前 batch 的训练做准备
             state_0 = state_0.to(device)
