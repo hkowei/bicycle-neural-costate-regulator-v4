@@ -6,6 +6,7 @@ import casadi as ca
 import torch
 import random
 import os
+import contextlib
 
 # class BicycleDynamics(torch.nn.Module):                         # pytorch 版本的dynamics，训练用
 #     def __init__(self):
@@ -148,11 +149,15 @@ def bicycle_solve_qp(lambda_x, lambda_y, lambda_theta, lambda_speed, theta, spee
     opts = {
     'printLevel': 'none'  # Suppress solver output for qpoases
     }
-    # Create QP solver
-    S = ca.qpsol('S', 'qpoases', qp, opts)
+    # # Create QP solver
+    # S = ca.qpsol('S', 'qpoases', qp, opts)
 
-    # Solve the problem
-    solution = S(lbx=lbx, ubx=ubx)
+    # # Solve the problem
+    # solution = S(lbx=lbx, ubx=ubx)
+    with open("./bin/qpoases_output.log", "a") as flog:
+        with contextlib.redirect_stdout(flog), contextlib.redirect_stderr(flog):
+            S = ca.qpsol('S', 'qpoases', qp, opts)
+            solution = S(lbx=lbx, ubx=ubx)
 
     # Extract results
     u_a_opt = solution['x'][0]
@@ -319,11 +324,33 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, speed_robot
     ax.legend(loc="upper right",fontsize=20)
 
     # transform beta to delta
-    beta_robot = omega_robot * rear_dist / (speed_robot[:-1] + 0.5)
-    # beta_robot = np.clip(beta_robot, -0.78, 0.78)
+    beta_robot = omega_robot * rear_dist / (speed_robot[:-1] + 0.5e-2)
+    beta_robot = np.clip(beta_robot, -3, 3)
     delta_robot = np.arctan(np.tan(beta_robot)*(rear_dist + front_dist)/rear_dist)
     if len(delta_robot) == len(x_robot) - 1:
         delta_robot = np.append(delta_robot, delta_robot[-1])
+    
+    # plot beta, omega, speed, delta for debugging
+    t_state = np.arange(len(speed_robot)) * dt
+    t_ctrl = np.arange(len(omega_robot)) * dt
+
+    fig_debug, ax_debug = plt.subplots(figsize=(10, 6))
+
+    ax_debug.plot(t_ctrl, omega_robot, label="omega")
+    ax_debug.plot(t_ctrl, beta_robot, label="beta")
+    ax_debug.plot(t_state, speed_robot, label="speed")
+    ax_debug.plot(t_state, delta_robot, label="delta")
+
+    ax_debug.set_xlabel("time [s]")
+    ax_debug.set_ylabel("value")
+    ax_debug.set_title("omega, beta, speed, delta")
+    ax_debug.legend()
+    ax_debug.grid(True)
+
+    fig_debug.tight_layout()
+    fig_debug.savefig("./bin/omega_beta_speed_delta_debug.png", dpi=200)
+    plt.close(fig_debug)
+
 
     # Animation function
     def update(frame):
