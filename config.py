@@ -30,7 +30,7 @@ rear_dist = 0.5*bi_scaling # Distance from rear axle to center of gravity, used 
 
 # simulation
 # Control input Constraints
-u_a_min = -2
+u_a_min = -3
 u_a_max = 2
 u_omega_min = -2    # beta should be small
 u_omega_max = 2
