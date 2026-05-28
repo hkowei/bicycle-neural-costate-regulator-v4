@@ -216,7 +216,7 @@ def print_config():
         f"_NN-{nn_str}"
         f"_lr{lr}"
         f"_scale{bi_scaling}"
-        f"_rear{rear_dist}"
+        f"_rear{rear_dist:.3f}"
     )
 
     if case == "a":
@@ -285,7 +285,7 @@ def print_config():
         f"{n},{epoch},{beta},{batch_size},"
         f"{R_str},{Q_str},{H_str},"
         f"{Nsample_str},{Rsample_str},"
-        f"{nn_str},{lr},{bi_scaling},{rear_dist},"
+        f"{nn_str},{lr},{bi_scaling},{rear_dist:.3f},"
         f"{um_str},{case},"
         f"\"{state0_str}\",\"{ref_str}\","
         f"\"{final_state_str}\",{abs_convergence_err:.2f},"

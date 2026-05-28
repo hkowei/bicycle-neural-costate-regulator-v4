@@ -73,7 +73,7 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
         if epoch == 1:
             now = time.time()
             first_epoch_time = now - epoch_start
-            est_tot = first_epoch_time * len(dataloader)
+            est_tot = first_epoch_time * epochs
             print(
                 f"First epoch runtime: {first_epoch_time/60:.2f} min, "
                 f"estimated total time: {est_tot/60:.2f} min",
