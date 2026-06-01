@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
-from config import dt, N, u_a_max, u_a_min, u_omega_max, u_omega_min, T_sim, total_steps_sim, rear_dist, r1, r2, bi_scaling
+from config import dt, N, u_a_max, u_a_min, u_s_max, u_s_min, T_sim, total_steps_sim, rear_dist, tot_dist, r1, r2, bi_scaling
 import casadi as ca
 import torch
 import random
@@ -44,10 +44,10 @@ import contextlib
 
 def train_dynamics(z, u):
     theta, speed = z[:, 2], z[:, 3]
-    u_a, u_omega = u[:, 0], u[:, 1]
-    x_dot = speed * torch.cos(theta) - u_omega * rear_dist * torch.sin(theta)
-    y_dot = speed * torch.sin(theta) + u_omega * rear_dist * torch.cos(theta)
-    theta_dot = u_omega
+    u_a, u_s = u[:, 0], u[:, 1]
+    x_dot = speed * torch.cos(theta) - speed * torch.sin(theta) * u_s
+    y_dot = speed * torch.sin(theta) + speed * torch.cos(theta) * u_s
+    theta_dot = speed / rear_dist * u_s
     speed_dot = u_a
     return torch.stack([x_dot, y_dot, theta_dot, speed_dot], dim=1)
 
@@ -104,10 +104,10 @@ def plot_traj(state_mpc, u_mpc, time, h, option):
     
 def bicycle_dynamics(z, u):                                  # Numpy 版本的dynamics，仿真用
     theta, speed = z[0,2], z[0,3]
-    u_a, u_omega = u[0], u[1]
-    x_dot = speed * np.cos(theta) - u_omega * rear_dist * np.sin(theta)
-    y_dot = speed * np.sin(theta) + u_omega * rear_dist * np.cos(theta)
-    theta_dot = u_omega
+    u_a, u_s = u[0], u[1]
+    x_dot = speed * np.cos(theta) - speed * np.sin(theta) * u_s
+    y_dot = speed * np.sin(theta) + speed * np.cos(theta) * u_s
+    theta_dot = speed / rear_dist * u_s
     speed_dot = u_a
     return np.array([x_dot, y_dot, theta_dot, speed_dot])
 
@@ -124,27 +124,27 @@ def bicycle_solve_qp(lambda_x, lambda_y, lambda_theta, lambda_speed, theta, spee
 
     # Define decision variables
     u_a = ca.SX.sym('u_a')                                   # 数学写法是 argmin_v H(v, omega)，这里的v和omega是优化变量，所以用ca.SX.sym来定义符号变量
-    u_omega = ca.SX.sym('u_omega')
+    u_s = ca.SX.sym('u_s')
 
     # Define the Hamiltonian
-    H = (r1*u_a**2 + r2*u_omega**2 +
-        lambda_x * (-u_omega * rear_dist * ca.sin(theta)) +
-        lambda_y * ( u_omega * rear_dist * ca.cos(theta)) +
-        lambda_theta * u_omega + 
+    H = (r1*u_a**2 + r2*u_s**2 +
+        lambda_x * (-speed * ca.sin(theta) * u_s) +
+        lambda_y * ( speed * ca.cos(theta) * u_s) +
+        lambda_theta * (speed/rear_dist * u_s) +
         lambda_speed * u_a
         )
 
     # Set up the QP problem
     qp = {
-        'x': ca.vertcat(u_a, u_omega),  # Decision variables [u_a, u_omega]
+        'x': ca.vertcat(u_a, u_s),  # Decision variables [u_a, u_s]
         'f': H,                    # Cost function (Hamiltonian)
         'g': ca.vertcat()          # No additional equality/inequality constraints
     }
 
     # Set bounds for the decision variables
 
-    lbx = [u_a_min, u_omega_min]  # Lower bounds for [u_a, u_omega]
-    ubx = [u_a_max, u_omega_max]  # Upper bounds for [u_a, u_omega]
+    lbx = [u_a_min, u_s_min]  # Lower bounds for [u_a, u_s]
+    ubx = [u_a_max, u_s_max]  # Upper bounds for [u_a, u_s]
 
     opts = {
     'printLevel': 'none'  # Suppress solver output for qpoases
@@ -161,8 +161,8 @@ def bicycle_solve_qp(lambda_x, lambda_y, lambda_theta, lambda_speed, theta, spee
 
     # Extract results
     u_a_opt = solution['x'][0]
-    u_omega_opt = solution['x'][1]
-    return u_a_opt, u_omega_opt
+    u_s_opt = solution['x'][1]
+    return u_a_opt, u_s_opt
 
 def set_seed(seed=42):
     random.seed(seed)
@@ -241,7 +241,7 @@ def save_animation(t_span, x_traj, y_traj, theta_traj, speed_traj, costate_traje
 # ==============================================================================
 
 # note: we need u_beta to calculate the heading of the bicycle
-def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, speed_robot, omega_robot, initial_state_option, gif_name, start_xy=None, goal_xy=None, obstacles=None,
+def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, speed_robot, u_s_robot, initial_state_option, gif_name, start_xy=None, goal_xy=None, obstacles=None,
                                        robot_r=0.25, margin=0.05):
     os.makedirs("./bi_animation/bicycle", exist_ok=True)
     # if initial_state_option == 'a':
@@ -323,35 +323,12 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, speed_robot
     robot_path, = ax.plot([], [], linestyle="--", color="saddlebrown", label="Traveled Path", linewidth=2)
     ax.legend(loc="upper right",fontsize=20)
 
-    # transform beta to delta
-    # beta_robot = omega_robot * rear_dist / (speed_robot[:-1] + 0.5e-2)
-    # beta_robot = np.clip(beta_robot, -3, 3)
-    # delta_robot = np.arctan(np.tan(beta_robot)*(rear_dist + front_dist)/rear_dist)
-    delta_robot = np.atan(rear_dist * omega_robot / (speed_robot[:-1] + 0.5e-2))
+
+    delta_robot = np.atan(tot_dist/rear_dist * u_s_robot)
     if len(delta_robot) == len(x_robot) - 1:
         delta_robot = np.append(delta_robot, delta_robot[-1])
-    
-    # # plot beta, omega, speed, delta for debugging
-    # t_state = np.arange(len(speed_robot)) * dt
-    # t_ctrl = np.arange(len(omega_robot)) * dt
 
-    # fig_debug, ax_debug = plt.subplots(figsize=(10, 6))
-
-    # ax_debug.plot(t_ctrl, omega_robot, label="omega")
-    # ax_debug.plot(t_ctrl, beta_robot, label="beta")
-    # ax_debug.plot(t_state, speed_robot, label="speed")
-    # ax_debug.plot(t_state, delta_robot, label="delta")
-
-    # ax_debug.set_xlabel("time [s]")
-    # ax_debug.set_ylabel("value")
-    # ax_debug.set_title("omega, beta, speed, delta")
-    # ax_debug.legend()
-    # ax_debug.grid(True)
-
-    # fig_debug.tight_layout()
-    # fig_debug.savefig("./bin/omega_beta_speed_delta_debug.png", dpi=200)
-    # plt.close(fig_debug)
-
+    front_dist = tot_dist - rear_dist
 
     # Animation function
     def update(frame):
@@ -359,8 +336,8 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, speed_robot
         x, y, theta, delta = x_robot[frame], y_robot[frame], theta_robot[frame], delta_robot[frame]
         
         # Update robot body position
-        robot_body.set_data([x - rear_dist * np.cos(theta), x],
-                            [y - rear_dist * np.sin(theta), y])
+        robot_body.set_data([x - rear_dist * np.cos(theta), x + front_dist * np.cos(theta)],
+                            [y - rear_dist * np.sin(theta), y + front_dist * np.sin(theta)])
         
         # Wheel offsets relative to the robot's center
         # wheel_offset = 0.3 # Distance of wheels from center  
@@ -375,8 +352,8 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, speed_robot
         wheelrear.angle = np.degrees(theta)
 
         # update front wheel position and orientation
-        wheelfront_center_x = x
-        wheelfront_center_y = y
+        wheelfront_center_x = x + front_dist * np.cos(theta)
+        wheelfront_center_y = y + front_dist * np.sin(theta)
         wheelfront.set_xy((
             wheelfront_center_x - wheel_height / 2 * np.cos(theta + delta) + wheel_width / 2 * np.sin(theta + delta),
             wheelfront_center_y - wheel_height / 2 * np.sin(theta + delta) - wheel_width / 2 * np.cos(theta + delta)

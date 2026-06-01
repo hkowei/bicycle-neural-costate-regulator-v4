@@ -12,3 +12,4 @@ model/
 rundata.txt
 simdata.txt
 bin/
+hamiltonian_analysis.ipynb

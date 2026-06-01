@@ -124,10 +124,10 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
                 speed_i = state_k[:, 3]
 
                 # 查看公式3.1， 用costate来计算最优控制
-                u_a_opt     = -0.5/r1 * lambdaspeed_i
-                u_omega_opt =  0.5/r2 * (lambdax_i * rear_dist * torch.sin(theta_i) - lambday_i * rear_dist * torch.cos(theta_i) - lambdatheta_i)   
+                u_a_opt = -0.5/r1 * lambdaspeed_i
+                u_s_opt =  0.5/r2 * (lambdax_i * speed_i * torch.sin(theta_i) - lambday_i * speed_i * torch.cos(theta_i) - lambdatheta_i * speed_i / rear_dist) 
                 # u_opt = torch.cat([u_a_opt_B.unsqueeze(0), u_beta_opt_B.unsqueeze(0)], dim=0).unsqueeze(0)
-                u_opt = torch.stack([u_a_opt, u_omega_opt], dim=1) # (B, 2))
+                u_opt = torch.stack([u_a_opt, u_s_opt], dim=1) # (B, 2))
 
 
                 # Compute stage cost using matrices

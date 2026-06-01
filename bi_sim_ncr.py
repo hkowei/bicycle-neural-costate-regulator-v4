@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 from config import T_sim, total_steps_sim, dt, CONN_HIDDEN_DIMS, n, epoch, case, state_0a, state_0b, x_ref, y_ref, theta_ref, speed_ref
 from bi_utils_debug import bicycle_solve_qp, rk4, save_animation, save_animation_bicycle_trajectory, save_bicycle_final_shot
 import time    # 这里导入 time 模块是为了计算 NCR 的仿真时间，看看它的效率如何。
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cpu')  # Force CPU
 print(f'Using device: {device}')
 
 # Neural Network Model
@@ -82,15 +83,15 @@ for i in range(total_steps_sim):
     lambdaspeed_k_hat = costate_traj_k_hat[0,0,3]
 
     # Impose input constraints
-    u_a, u_omega = bicycle_solve_qp(lambda_x=lambdax_k_hat, lambda_y=lambday_k_hat, 
+    u_a, u_s = bicycle_solve_qp(lambda_x=lambdax_k_hat, lambda_y=lambday_k_hat, 
                  lambda_theta=lambdatheta_k_hat, lambda_speed=lambdaspeed_k_hat, 
                  theta=state_k_tensor[0,2].cpu().detach().numpy(),
                  speed=state_k_tensor[0,3].cpu().detach().numpy())
     u_a = float(u_a)
-    u_omega = float(u_omega)
+    u_s = float(u_s)
 
 
-    u_k = np.array([u_a, u_omega])
+    u_k = np.array([u_a, u_s])
     u_traj_undisturbed.append(u_k)
 
     state_k = rk4(state_k, u_k)            # rk4就是bicycle dynamics更新
@@ -110,7 +111,7 @@ y_traj = state_traj_undisturbed[:,1]
 theta_traj = state_traj_undisturbed[:,2]
 speed_traj = state_traj_undisturbed[:,3]  # 追加speed轨迹
 u_a_traj = u_traj_undisturbed[:,0]
-u_omega_traj = u_traj_undisturbed[:,1]
+u_s_traj = u_traj_undisturbed[:,1]
 final_state_undisturbed = state_traj_undisturbed[-1]
 
 # Compute trajectory gradients (numerical derivatives)
@@ -120,7 +121,7 @@ theta_traj_grad = np.gradient(theta_traj, dt)
 speed_traj_grad = np.gradient(speed_traj, dt)  # 追加speed轨迹的梯度
 
 u_a_traj_grad = np.gradient(u_a_traj, dt)
-u_omega_traj_grad = np.gradient(u_omega_traj, dt)
+u_s_traj_grad = np.gradient(u_s_traj, dt)
 
 # Compute mean squared derivative
 x_traj_msd = np.mean(x_traj_grad ** 2)
@@ -131,8 +132,8 @@ avg_state_msd = (x_traj_msd + y_traj_msd + theta_traj_msd + speed_traj_msd) / 4 
 print(f"Average State Trajectory Mean Squared derivatives {avg_state_msd:.2f}")
 
 u_a_traj_msd = np.mean(u_a_traj_grad ** 2)
-u_omega_traj_msd = np.mean(u_omega_traj_grad ** 2)
-avg_u_msd = (u_a_traj_msd + u_omega_traj_msd) / 2
+u_s_traj_msd = np.mean(u_s_traj_grad ** 2)
+avg_u_msd = (u_a_traj_msd + u_s_traj_msd) / 2
 print(f"Average Control Input Trajectory Mean Squared derivatives {avg_u_msd:.2f}")
 
 # Plot the results and save the figure
@@ -154,7 +155,7 @@ plt.yticks(fontsize=24, fontweight='bold')
 # Plot u trajectories
 plt.subplot(1, 2, 2)
 plt.plot(t_span[:-1], u_a_traj, linestyle='-', dashes=[3, 1], label=r"$u_{a,ncr}$", linewidth=5)
-plt.plot(t_span[:-1], u_omega_traj, linestyle='-', dashes=[3, 1], label=r"$u_{\omega,ncr}$", linewidth=5)
+plt.plot(t_span[:-1], u_s_traj, linestyle='-', dashes=[3, 1], label=r"$u_{s,ncr}$", linewidth=5)
 plt.xlabel("Time (s)", fontsize=20, fontweight='bold')
 plt.ylabel("Control Input", fontsize=20, fontweight='bold')
 plt.legend(fontsize=28)
@@ -180,7 +181,7 @@ save_animation(t_span, x_traj, y_traj, theta_traj, speed_traj,
 
 # ================== Robot animation of bicycle ==================
 fig_name = f'bi_robot_animation_ncr_N{n}_{initial_state_option}.gif'
-save_animation_bicycle_trajectory(x_robot=x_traj, y_robot=y_traj, theta_robot=theta_traj, speed_robot=speed_traj, omega_robot=u_omega_traj, initial_state_option = initial_state_option, gif_name = fig_name, start_xy=None, goal_xy=None, obstacles=None,
+save_animation_bicycle_trajectory(x_robot=x_traj, y_robot=y_traj, theta_robot=theta_traj, speed_robot=speed_traj, u_s_robot=u_s_traj, initial_state_option = initial_state_option, gif_name = fig_name, start_xy=None, goal_xy=None, obstacles=None,
                                        robot_r=0.25, margin=0.05)
 # file_name = f'bi_robot_final_shot_ncr_N{n}_{initial_state_option}.png'
 # save_bicycle_final_shot(x_robot=x_traj, y_robot=y_traj, u_beta_robot=u_beta_traj, file_name=file_name, start_xy=None, goal_xy=None, theta_robot=None, obstacles=None, robot_r=0.25, margin=0.05,
@@ -196,9 +197,9 @@ from config import (
     Nsample1, Nsample2, Nsample3, Nsample4,
     x_bound, y_bound, theta_bound, speed_bound,
     CONN_HIDDEN_DIMS, lr,
-    bi_scaling, rear_dist,
+    bi_scaling, rear_dist, tot_dist,
     u_a_min, u_a_max,
-    u_omega_min, u_omega_max,
+    u_s_min, u_s_max,
     case, state_0a, state_0b,
     x_ref, y_ref, theta_ref, speed_ref
 )
@@ -217,6 +218,7 @@ def print_config():
         f"_lr{lr}"
         f"_scale{bi_scaling}"
         f"_rear{rear_dist:.3f}"
+        f"_L{tot_dist:.3f}"
     )
 
     if case == "a":
@@ -246,7 +248,7 @@ def print_config():
         sim_case_info = f"case-{case}_unknown"
 
     simulation_info = (
-        f"um-{abs(u_a_min)}-{u_a_max}-{abs(u_omega_min)}-{u_omega_max}"
+        f"um-{abs(u_a_min)}-{u_a_max}-{abs(u_s_min)}-{u_s_max}"
         f"_{sim_case_info}"
     )
 
@@ -267,7 +269,7 @@ def print_config():
     H_str = f"{h1}-{h2}-{h3}-{h4}"
     Nsample_str = f"{Nsample1}-{Nsample2}-{Nsample3}-{Nsample4}"
     Rsample_str = f"{x_bound}-{y_bound}-{theta_bound}-{speed_bound}"
-    um_str = f"{abs(u_a_min)}-{u_a_max}-{abs(u_omega_min)}-{u_omega_max}"
+    um_str = f"{abs(u_a_min)}-{u_a_max}-{abs(u_s_min)}-{u_s_max}"
 
     if state0 is not None:
         state0_str = f"{state0[0]},{state0[1]},{state0[2]},{state0[3]}"
@@ -285,7 +287,7 @@ def print_config():
         f"{n},{epoch},{beta},{batch_size},"
         f"{R_str},{Q_str},{H_str},"
         f"{Nsample_str},{Rsample_str},"
-        f"{nn_str},{lr},{bi_scaling},{rear_dist:.3f},"
+        f"{nn_str},{lr},{bi_scaling},{rear_dist:.3f},{tot_dist:.3f}"
         f"{um_str},{case},"
         f"\"{state0_str}\",\"{ref_str}\","
         f"\"{final_state_str}\",{abs_convergence_err:.2f},"

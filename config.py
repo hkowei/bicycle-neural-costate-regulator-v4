@@ -3,7 +3,7 @@ import numpy as np
 
 dt = 0.05 # Sampling time
 # Total time of simulation and time steps
-T_sim = 10*2
+T_sim = 5
 total_steps_sim = int(T_sim/dt)
 
 
@@ -26,14 +26,14 @@ lr = 1e-4
 
 bi_scaling = 1
 rear_dist = 0.4*bi_scaling # important note: rear_dist right now is actually used as the length of the whole bicycle
-
+tot_dist = rear_dist
 
 # simulation
 # Control input Constraints
 u_a_min = -3
 u_a_max = 3
-u_omega_min = -2    # beta should be small
-u_omega_max = 2
+u_s_min = -2    # beta should be small
+u_s_max = 2
 case = 'a'
 state_0a = np.array([[-2, 2, -1.79, 0]])
 state_0b = np.array([[-5.24, 4.11, 2.72, 0]])
