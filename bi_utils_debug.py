@@ -289,17 +289,17 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, speed_robot
             ax.add_patch(plt.Circle((xo, yo), r_eff, fill=False, linewidth=2, linestyle='--', color='red', label="Safety boundary" if j == 0 else None, zorder=3))
 
     # assume lr = lf
-    front_dist = rear_dist
+    # front_dist = rear_dist
 
     # Draw the robot components
     # robot_body = plt.Circle((0, 0), 0.25, color='cyan', fill=True, linewidth=2)  # Robot circular base   #was 0.25
-    robot_body, = ax.plot([-rear_dist, front_dist], [0, 0], color="black", linewidth=3)
-    wheel_width = 0.2*bi_scaling
-    wheel_height = 0.6*bi_scaling
+    robot_body, = ax.plot([-rear_dist, 0], [0, 0], color="black", linewidth=3)
+    wheel_width = 0.2*bi_scaling/2
+    wheel_height = 0.6*bi_scaling/2
 
     wheelrear = plt.Rectangle((-rear_dist-wheel_height / 2, -wheel_width / 2), wheel_height, wheel_width, color='gold')  # Left wheel
-    wheelfront = plt.Rectangle((front_dist-wheel_height / 2, -wheel_width / 2), wheel_height, wheel_width, color='gold')  # Right wheel
-    front_wheel_dot = plt.Circle((front_dist + wheel_height / 2, 0), radius=0.03, color='black')
+    wheelfront = plt.Rectangle((         -wheel_height / 2, -wheel_width / 2), wheel_height, wheel_width, color='gold')  # Right wheel
+    front_wheel_dot = plt.Circle((        wheel_height / 2, 0), radius=0.03, color='black')
 
     # Add the robot components to the plot
     # ax.add_patch(robot_body)     # 这里改成了plot，所以不需要add_patch了
@@ -324,32 +324,33 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, speed_robot
     ax.legend(loc="upper right",fontsize=20)
 
     # transform beta to delta
-    beta_robot = omega_robot * rear_dist / (speed_robot[:-1] + 0.5e-2)
-    beta_robot = np.clip(beta_robot, -3, 3)
-    delta_robot = np.arctan(np.tan(beta_robot)*(rear_dist + front_dist)/rear_dist)
+    # beta_robot = omega_robot * rear_dist / (speed_robot[:-1] + 0.5e-2)
+    # beta_robot = np.clip(beta_robot, -3, 3)
+    # delta_robot = np.arctan(np.tan(beta_robot)*(rear_dist + front_dist)/rear_dist)
+    delta_robot = np.atan(rear_dist * omega_robot / (speed_robot[:-1] + 0.5e-2))
     if len(delta_robot) == len(x_robot) - 1:
         delta_robot = np.append(delta_robot, delta_robot[-1])
     
-    # plot beta, omega, speed, delta for debugging
-    t_state = np.arange(len(speed_robot)) * dt
-    t_ctrl = np.arange(len(omega_robot)) * dt
+    # # plot beta, omega, speed, delta for debugging
+    # t_state = np.arange(len(speed_robot)) * dt
+    # t_ctrl = np.arange(len(omega_robot)) * dt
 
-    fig_debug, ax_debug = plt.subplots(figsize=(10, 6))
+    # fig_debug, ax_debug = plt.subplots(figsize=(10, 6))
 
-    ax_debug.plot(t_ctrl, omega_robot, label="omega")
-    ax_debug.plot(t_ctrl, beta_robot, label="beta")
-    ax_debug.plot(t_state, speed_robot, label="speed")
-    ax_debug.plot(t_state, delta_robot, label="delta")
+    # ax_debug.plot(t_ctrl, omega_robot, label="omega")
+    # ax_debug.plot(t_ctrl, beta_robot, label="beta")
+    # ax_debug.plot(t_state, speed_robot, label="speed")
+    # ax_debug.plot(t_state, delta_robot, label="delta")
 
-    ax_debug.set_xlabel("time [s]")
-    ax_debug.set_ylabel("value")
-    ax_debug.set_title("omega, beta, speed, delta")
-    ax_debug.legend()
-    ax_debug.grid(True)
+    # ax_debug.set_xlabel("time [s]")
+    # ax_debug.set_ylabel("value")
+    # ax_debug.set_title("omega, beta, speed, delta")
+    # ax_debug.legend()
+    # ax_debug.grid(True)
 
-    fig_debug.tight_layout()
-    fig_debug.savefig("./bin/omega_beta_speed_delta_debug.png", dpi=200)
-    plt.close(fig_debug)
+    # fig_debug.tight_layout()
+    # fig_debug.savefig("./bin/omega_beta_speed_delta_debug.png", dpi=200)
+    # plt.close(fig_debug)
 
 
     # Animation function
@@ -358,8 +359,8 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, speed_robot
         x, y, theta, delta = x_robot[frame], y_robot[frame], theta_robot[frame], delta_robot[frame]
         
         # Update robot body position
-        robot_body.set_data([x - rear_dist * np.cos(theta), x + front_dist * np.cos(theta)],
-                            [y - rear_dist * np.sin(theta), y + front_dist * np.sin(theta)])
+        robot_body.set_data([x - rear_dist * np.cos(theta), x],
+                            [y - rear_dist * np.sin(theta), y])
         
         # Wheel offsets relative to the robot's center
         # wheel_offset = 0.3 # Distance of wheels from center  
@@ -374,8 +375,8 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, speed_robot
         wheelrear.angle = np.degrees(theta)
 
         # update front wheel position and orientation
-        wheelfront_center_x = x + front_dist * np.cos(theta)
-        wheelfront_center_y = y + front_dist * np.sin(theta)
+        wheelfront_center_x = x
+        wheelfront_center_y = y
         wheelfront.set_xy((
             wheelfront_center_x - wheel_height / 2 * np.cos(theta + delta) + wheel_width / 2 * np.sin(theta + delta),
             wheelfront_center_y - wheel_height / 2 * np.sin(theta + delta) - wheel_width / 2 * np.cos(theta + delta)
