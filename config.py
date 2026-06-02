@@ -8,9 +8,9 @@ total_steps_sim = int(T_sim/dt)
 
 
 # Training parameters
-n = 50 # Prediction horizon
+n = 3 # Prediction horizon
 N = n
-epoch = 55
+epoch = 20
 beta = 0.99
 batch_size = 100
 

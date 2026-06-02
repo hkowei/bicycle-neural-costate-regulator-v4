@@ -45,7 +45,7 @@ class CoNN(nn.Module):
 
 
 # Training Setup
-def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, model_save_path, batch_size=1, epochs=50, lr=2e-4, continue_training=False):
+def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, model_save_path, checkpoint_path, batch_size=1, epochs=50, lr=2e-4, continue_training=False):
 
     dataset = InitialStateDataset(initial_states)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
@@ -70,9 +70,18 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
         print("old epoch:", old_epoch)
         print("total epoch:", epochs)
         print("epoch to train:", epochs - old_epoch)
-        old_model_name = f'bi_t0_ncr_N{n}_seed_{seed}_e{old_epoch}.pth'
-        print(f'load model: {old_model_name}')
-        model.load_state_dict(torch.load(f'./model/{old_model_name}'))
+        old_checkpoint_path = f"./checkpoint/bi_t0_ncr_N{n}_seed_{seed}_e{old_epoch}.pth"
+        old_checkpoint = torch.load(old_checkpoint_path)
+        model.load_state_dict(old_checkpoint["model_state_dict"])
+        optimizer.load_state_dict(old_checkpoint["optimizer_state_dict"])
+        old_epoch_from_checkpoint = old_checkpoint["epoch"]
+        if old_epoch != old_epoch_from_checkpoint:
+            error_msg = f"Epoch mismatch: checkpoint epoch {old_epoch_from_checkpoint} does not match epoch from rundata {old_epoch}"
+            print(error_msg)
+            raise ValueError(error_msg)
+        # old_model_name = f'bi_t0_ncr_N{n}_seed_{seed}_e{old_epoch}.pth'
+        # print(f'load model: {old_model_name}')
+        # model.load_state_dict(torch.load(f'./model/{old_model_name}'))
 
     
 
@@ -196,6 +205,11 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
     # Save the trained model
     torch.save(model.state_dict(), model_save_path)
     print(f"Model saved to {model_save_path}")
+    torch.save({
+        "epoch": epochs,
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+    }, checkpoint_path)
 
 if __name__ == '__main__':                 # 如果直接运行 train.py，就会执行下面的代码，进行训练；如果在其他文件 import train.py，则不会执行下面的代码
     seed = 0
@@ -229,4 +243,5 @@ if __name__ == '__main__':                 # 如果直接运行 train.py，就�
     # Train the model
     # q1 = 10.0; q2 = 10.0; q3 = 10.0; q4 = 10.0; r1 = 1.0; r2 = 1.0    # may need to import from config later
     model_save_path = f"./model/bi_t0_ncr_N{n}_seed_{seed}_e{epoch}.pth"
-    train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, model_save_path, batch_size=batch_size, epochs=epoch, lr=lr, continue_training=continue_training)
+    checkpoint_path = f"./checkpoint/bi_t0_ncr_N{n}_seed_{seed}_e{epoch}.pth"
+    train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, model_save_path, checkpoint_path, batch_size=batch_size, epochs=epoch, lr=lr, continue_training=continue_training)
