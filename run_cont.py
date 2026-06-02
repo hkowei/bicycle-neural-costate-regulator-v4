@@ -18,8 +18,8 @@ import time
 start_time = time.time()
 
 try:
-    print("========== Running bicycle training ==========")
-    subprocess.run([sys.executable, "bi_train_init_debug.py"], check=True)
+    print("========== Continue bicycle training ==========")
+    subprocess.run([sys.executable, "bi_train_init_debug.py","--continue-training"], check=True)
 
     print("========== Running bicycle simulation ==========")
     subprocess.run([sys.executable, "bi_sim_ncr.py"], check=True)

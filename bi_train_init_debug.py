@@ -1,4 +1,5 @@
 import os
+from xml.parsers.expat import model
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
@@ -8,6 +9,7 @@ from bi_utils_debug import set_seed, train_rk4
 from config import dt, beta, rear_dist, CONN_HIDDEN_DIMS, q1, q2, q3, q4, r1, r2, n, h1, h2, h3, h4, epoch, batch_size, Nsample1, Nsample2, Nsample3, Nsample4, x_bound, y_bound, theta_bound, speed_bound, lr
 from torchdiffeq import odeint
 import time
+import argparse
 
 # Step 2: Create Dataset Class
 class InitialStateDataset(Dataset):
@@ -43,7 +45,7 @@ class CoNN(nn.Module):
 
 
 # Training Setup
-def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, model_save_path, batch_size=1, epochs=50, lr=2e-4):
+def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, model_save_path, batch_size=1, epochs=50, lr=2e-4, continue_training=False):
 
     dataset = InitialStateDataset(initial_states)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
@@ -58,6 +60,22 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
     # Initialize NN
     model = CoNN(n).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    old_epoch = 0
+  
+    if continue_training:
+        with open("rundata.txt", "r") as f:
+            old_rundata = f.read().strip()
+        old_epoch = int(old_rundata.split("_e")[1].split("_")[0])
+        print("old rundata:", old_rundata)
+        print("old epoch:", old_epoch)
+        print("total epoch:", epochs)
+        print("epoch to train:", epochs - old_epoch)
+        old_model_name = f'bi_t0_ncr_N{n}_seed_{seed}_e{old_epoch}.pth'
+        print(f'load model: {old_model_name}')
+        model.load_state_dict(torch.load(f'./model/{old_model_name}'))
+
+    
+
     model.train()
 
     # Define cost matrices
@@ -68,7 +86,8 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
 
     epoch_start = time.time()
 
-    for epoch in range(epochs):   
+    epochs_to_train = epochs - old_epoch
+    for epoch in range(epochs_to_train):   
 
         if epoch == 1:
             now = time.time()
@@ -172,7 +191,7 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
 
         avg_loss = epoch_loss / len(dataset)
         avg_lambda_loss = epoch_lambda_loss / len(dataset)
-        print(f"********Epoch [{epoch + 1}/{epochs}], Loss: {avg_loss:.2f}, Lambda Loss {avg_lambda_loss:.2f}********")
+        print(f"********Epoch [{epoch + 1 + old_epoch}/{epochs}], Loss: {avg_loss:.2f}, Lambda Loss {avg_lambda_loss:.2f}********")
 
     # Save the trained model
     torch.save(model.state_dict(), model_save_path)
@@ -201,7 +220,13 @@ if __name__ == '__main__':                 # 如果直接运行 train.py，就�
     # Randomly shuffle the data set
     np.random.shuffle(initial_states)
     
+    # determine whether to continue training from a saved model
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--continue-training", action="store_true")
+    args = parser.parse_args()
+    continue_training = args.continue_training
+
     # Train the model
     # q1 = 10.0; q2 = 10.0; q3 = 10.0; q4 = 10.0; r1 = 1.0; r2 = 1.0    # may need to import from config later
     model_save_path = f"./model/bi_t0_ncr_N{n}_seed_{seed}_e{epoch}.pth"
-    train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, model_save_path, batch_size=batch_size, epochs=epoch, lr=lr)
+    train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, model_save_path, batch_size=batch_size, epochs=epoch, lr=lr, continue_training=continue_training)
