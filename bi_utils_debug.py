@@ -315,8 +315,8 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, speed_robot
     # Add the black solid circles to represent obstacles
     # start_marker_xy = plt.Circle((start_pos[0], start_pos[1]), 0.2, color='green', fill=True, label="Start")
     # goal_marker_xy = plt.Circle((end_pos[0], end_pos[1]), 0.2, color='red', fill=True, label="Goal")
-    start_marker_xy = plt.Circle(start_xy, 0.2*bi_scaling, color='green', fill=True, label="Start")
-    goal_marker_xy = plt.Circle(goal_xy, 0.2*bi_scaling, color='red', fill=True, label="Goal")
+    start_marker_xy = plt.Circle(start_xy, 0.2*bi_scaling, color='green', fill=True, label="Start", zorder=-10)
+    goal_marker_xy = plt.Circle(goal_xy, 0.2*bi_scaling, color='red', fill=True, label="Goal", zorder=-10)
     ax.add_patch(start_marker_xy)
     ax.add_patch(goal_marker_xy)
     # Add a dynamic trajectory line

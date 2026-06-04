@@ -147,7 +147,7 @@ plt.plot(t_span, theta_traj, linestyle='-', dashes=[3, 1], label=r"$\theta_{ncr}
 plt.plot(t_span, speed_traj, linestyle='-', dashes=[3, 1], label=r"$speed_{ncr}$", linewidth=5)  # 追加speed轨迹
 plt.xlabel("Time (s)", fontsize=20, fontweight='bold')
 plt.ylabel("State Trajectory", fontsize=20, fontweight='bold')
-plt.legend(fontsize=28)
+plt.legend(fontsize=20)
 plt.grid(True)
 plt.xticks(fontsize=24, fontweight='bold')
 plt.yticks(fontsize=24, fontweight='bold')
