@@ -190,7 +190,7 @@ save_animation_bicycle_trajectory(x_robot=x_traj, y_robot=y_traj, theta_robot=th
 # ================= Print Configuration ======================
 
 from config import (
-    n, epoch, dt, betav42, batch_size,
+    n, epoch, dt, betav42, beta_h, batch_size,
     r1, r2,
     q1, q2, q3, q4,
     h1, h2, h3, h4,
@@ -208,7 +208,7 @@ def print_config():
     nn_str = "-".join(str(v) for v in CONN_HIDDEN_DIMS)
 
     training_info = (
-        f"N{n}_e{epoch}_dt{dt}_beta{beta}_B{batch_size}"
+        f"N{n}_e{epoch}_dt{dt}_beta{beta}_betah{beta_h}_B{batch_size}"
         f"_R-{r1}-{r2}"
         f"_Q-{q1}-{q2}-{q3}-{q4}"
         f"_H-{h1}-{h2}-{h3}-{h4}"
@@ -285,7 +285,7 @@ def print_config():
 
     csv_row = (
         f"\"{final_state_str}\",{abs_convergence_err:.2f},"
-        f"{n},{epoch},{dt},{beta},{batch_size},"
+        f"{n},{epoch},{dt},{beta},{beta_h},{batch_size},"
         f"{R_str},{Q_str},{H_str},"
         f"{Nsample_str},{Rsample_str},"
         f"{nn_str},{lr},{bi_scaling},{rear_dist:.3f},{tot_dist:.3f},"

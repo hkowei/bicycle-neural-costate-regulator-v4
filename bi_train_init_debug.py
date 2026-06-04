@@ -6,7 +6,7 @@ import torch.nn as nn
 from torchdiffeq import odeint # Use odeint for integration
 import numpy as np
 from bi_utils_debug import set_seed, train_rk4
-from config import dt, betav42, rear_dist, CONN_HIDDEN_DIMS, q1, q2, q3, q4, r1, r2, n, h1, h2, h3, h4, epoch, batch_size, Nsample1, Nsample2, Nsample3, Nsample4, x_bound, y_bound, theta_bound, speed_bound, lr, VERSION
+from config import dt, betav42, beta_h, rear_dist, CONN_HIDDEN_DIMS, q1, q2, q3, q4, r1, r2, n, h1, h2, h3, h4, epoch, batch_size, Nsample1, Nsample2, Nsample3, Nsample4, x_bound, y_bound, theta_bound, speed_bound, lr, VERSION
 from torchdiffeq import odeint
 import time
 import argparse
@@ -147,6 +147,10 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
             L_stage = 0
             L_terminal = 0
             lambda_cost = 0
+            lambdax_i = costate_traj_k_hat[:,0,0]
+            lambday_i = costate_traj_k_hat[:,0,1]
+            lambdatheta_i = costate_traj_k_hat[:,0,2]
+            lambdaspeed_i = costate_traj_k_hat[:,0,3]
 
             for i in range(n):                                                  # 迭代预测的每一个时间步，计算对应的控制输入和阶段成本
                 lambdax_i = costate_traj_k_hat[:,i,0]
@@ -191,8 +195,9 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
 
             # Compute L_terminal
             L_terminal = (state_k @ H * state_k).sum(dim=1)
+            L_terminal_costate = torch.abs(lambdax_i) + torch.abs(lambday_i) + torch.abs(lambdatheta_i) + torch.abs(lambdaspeed_i)
             # Backpropagation
-            loss_B = L_stage + L_terminal + beta*lambda_cost
+            loss_B = L_stage + L_terminal + beta*lambda_cost + beta_h*L_terminal_costate
             loss = loss_B.mean()  # Average over the batch
             back_prop_start_time = time.time()
             loss.backward()                            # 如果之前没有写 optimizer.zero_grad()，那么每次调用 loss.backward() 的时候，梯度会累积起来，这样就会导致模型的参数更新不正确。

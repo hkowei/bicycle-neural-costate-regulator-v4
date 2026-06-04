@@ -2,16 +2,17 @@ import numpy as np
 
 VERSION = 'v4.2'
 
-dt = 0.05 # Sampling time
+dt = 0.01 # Sampling time
 # Total time of simulation and time steps
-T_sim = 200
+T_sim = 5
 total_steps_sim = int(T_sim/dt)
 
 
 # Training parameters
-n = 80 # Prediction horizon
-epoch = 150
-betav42 = 1.99
+n = 8 # Prediction horizon
+epoch = 2
+betav42 = 0.99
+beta_h = betav42*100
 batch_size = 100
 
 r1 = 15.0; r2 = 3; 
@@ -34,7 +35,7 @@ u_a_min = -3
 u_a_max = 3
 u_s_min = -2    # beta should be small
 u_s_max = 2
-case = 'c'
+case = 'a'
 state_0a = np.array([[-2, 2, -1.79, 0]])
 state_0b = np.array([[-5.24, 4.11, 2.72, 0]])
 x_ref = 1; y_ref = 1; theta_ref = 0; speed_ref = 0

@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
-from config import dt, N, u_a_max, u_a_min, u_s_max, u_s_min, T_sim, total_steps_sim, rear_dist, tot_dist, r1, r2, bi_scaling
+from config import dt, n, u_a_max, u_a_min, u_s_max, u_s_min, T_sim, total_steps_sim, rear_dist, tot_dist, r1, r2, bi_scaling
 import casadi as ca
 import torch
 import random
@@ -96,7 +96,7 @@ def plot_traj(state_mpc, u_mpc, time, h, option):
     plt.xticks(fontsize=24, fontweight='bold')
     plt.yticks(fontsize=24, fontweight='bold')
     plt.tight_layout()
-    output_dir = f'./figs/mpc_N{N}_h{h}_{option}.png'
+    output_dir = f'./figs/mpc_N{n}_h{h}_{option}.png'
     plt.savefig(output_dir, dpi=300)
     plt.close()
 
