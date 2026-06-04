@@ -1,22 +1,22 @@
 import numpy as np
 
 
-dt = 0.02 #dt = 0.05 # Sampling time
+dt = 0.05 # Sampling time
 # Total time of simulation and time steps
-T_sim = 20
+T_sim = 200
 total_steps_sim = int(T_sim/dt)
 
 
 # Training parameters
-n = 200 # Prediction horizon, prediction time is n*dt
+n = 80 # Prediction horizon
 N = n
-epoch = 300
-beta = 0.99
+epoch = 150
+beta = 1.99
 batch_size = 100
 
 r1 = 15.0; r2 = 3; 
 q1 = 10.0; q2 = 30.0; q3 = 4; q4 = 50; 
-h1 = 1200; h2 = 1800; h3 = 1200; h4 = 3300.0
+h1 = 1200; h2 = 1800; h3 = 1500; h4 = 3300.0
 
 Nsample1, Nsample2, Nsample3, Nsample4 = 10, 10, 10, 10
 x_bound, y_bound, theta_bound, speed_bound = 2,2,2,2 #  sample range for initial states
@@ -34,7 +34,7 @@ u_a_min = -3
 u_a_max = 3
 u_s_min = -2    # beta should be small
 u_s_max = 2
-case = 'a'
+case = 'c'
 state_0a = np.array([[-2, 2, -1.79, 0]])
 state_0b = np.array([[-5.24, 4.11, 2.72, 0]])
 x_ref = 1; y_ref = 1; theta_ref = 0; speed_ref = 0
