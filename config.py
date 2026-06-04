@@ -1,5 +1,6 @@
 import numpy as np
 
+VERSION = 'v4.2'
 
 dt = 0.05 # Sampling time
 # Total time of simulation and time steps
@@ -9,9 +10,8 @@ total_steps_sim = int(T_sim/dt)
 
 # Training parameters
 n = 80 # Prediction horizon
-N = n
 epoch = 150
-beta = 1.99
+betav42 = 1.99
 batch_size = 100
 
 r1 = 15.0; r2 = 3; 

@@ -6,10 +6,15 @@ import torch.nn as nn
 from torchdiffeq import odeint # Use odeint for integration
 import numpy as np
 from bi_utils_debug import set_seed, train_rk4
-from config import dt, beta, rear_dist, CONN_HIDDEN_DIMS, q1, q2, q3, q4, r1, r2, n, h1, h2, h3, h4, epoch, batch_size, Nsample1, Nsample2, Nsample3, Nsample4, x_bound, y_bound, theta_bound, speed_bound, lr
+from config import dt, betav42, rear_dist, CONN_HIDDEN_DIMS, q1, q2, q3, q4, r1, r2, n, h1, h2, h3, h4, epoch, batch_size, Nsample1, Nsample2, Nsample3, Nsample4, x_bound, y_bound, theta_bound, speed_bound, lr, VERSION
 from torchdiffeq import odeint
 import time
 import argparse
+
+beta = betav42
+if VERSION != 'v4.2':
+    raise ValueError(f"Version mismatch: expected 'v4.2' but got {VERSION}")
+
 
 # Step 2: Create Dataset Class
 class InitialStateDataset(Dataset):
