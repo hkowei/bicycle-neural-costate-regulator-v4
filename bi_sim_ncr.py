@@ -209,8 +209,8 @@ def print_config():
 
     training_info = (
         f"N{n}_e{epoch}_dt{dt}_beta{beta}_betah{beta_h}_B{batch_size}"
-        f"_R-{r1}-{r2}"
-        f"_Q-{q1}-{q2}-{q3}-{q4}"
+        f"_R-{r1:.2f}-{r2:.2f}"
+        f"_Q-{q1:.2f}-{q2:.2f}-{q3:.2f}-{q4:.2f}"
         f"_H-{h1}-{h2}-{h3}-{h4}"
         f"_Nsample-{Nsample1}-{Nsample2}-{Nsample3}-{Nsample4}"
         f"_Rsample-{x_bound}-{y_bound}-{theta_bound}-{speed_bound}"
@@ -264,8 +264,8 @@ def print_config():
         f.write(simulation_info + "\n")
 
     # CSV format for runs_index.csv
-    R_str = f"{r1}-{r2}"
-    Q_str = f"{q1}-{q2}-{q3}-{q4}"
+    R_str = f"{r1:.2f}-{r2:.2f}"
+    Q_str = f"{q1:.2f}-{q2:.2f}-{q3:.2f}-{q4:.2f}"
     H_str = f"{h1}-{h2}-{h3}-{h4}"
     Nsample_str = f"{Nsample1}-{Nsample2}-{Nsample3}-{Nsample4}"
     Rsample_str = f"{x_bound}-{y_bound}-{theta_bound}-{speed_bound}"

@@ -3,20 +3,21 @@ import numpy as np
 VERSION = 'v4.2'
 
 dt = 0.01 # Sampling time
+dt_scale = dt / 0.05
 # Total time of simulation and time steps
-T_sim = 5
+T_sim = 20
 total_steps_sim = int(T_sim/dt)
 
 
 # Training parameters
-n = 8 # Prediction horizon
-epoch = 2
+n = 400 # Prediction horizon
+epoch = 50
 betav42 = 0.99
 beta_h = betav42*100
 batch_size = 100
 
-r1 = 15.0; r2 = 3; 
-q1 = 10.0; q2 = 30.0; q3 = 4; q4 = 50; 
+r1 = 15.0*dt_scale; r2 = 3*dt_scale; 
+q1 = 10.0*dt_scale; q2 = 30.0*dt_scale; q3 = 4*dt_scale; q4 = 50*dt_scale; 
 h1 = 1200; h2 = 1800; h3 = 1500; h4 = 3300.0
 
 Nsample1, Nsample2, Nsample3, Nsample4 = 10, 10, 10, 10
