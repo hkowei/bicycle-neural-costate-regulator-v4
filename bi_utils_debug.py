@@ -371,11 +371,13 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, speed_robot
 
         return robot_body, wheelrear, wheelfront, robot_path  
     # Create the animation
-    time_per_step = 0.05 # in seconds, adjusted based on experiment results
+    time_per_step = dt # in seconds, adjusted based on experiment results
+    frame_skip = int(0.05/dt)
+    frame_indices = range(0, len(x_robot), frame_skip)
     plt.tight_layout()
-    anim = animation.FuncAnimation(fig, update, frames=len(x_robot), blit=True)
+    anim = animation.FuncAnimation(fig, update, frames=frame_indices, blit=True)
     output_dir = f"./bi_animation/bicycle/{gif_name}.mp4"
-    anim.save(output_dir, writer="ffmpeg", fps=1/time_per_step)
+    anim.save(output_dir, writer="ffmpeg", fps=1/(time_per_step*frame_skip))
     print(f"Animation (wheeled robot motion) saved to {output_dir}")
 
 # ================== Final shot of bicycle trajectory with safety boundaries ==================
