@@ -227,7 +227,7 @@ def save_animation(t_span, x_traj, y_traj, theta_traj, speed_traj, costate_traje
     # Create animation
     plt.tight_layout()
     frame_skip = int(0.05/dt)
-    frame_indices = range(0, len(t_span), frame_skip)
+    frame_indices = range(0, total_steps_sim, frame_skip)
     ani = animation.FuncAnimation(fig, update, frames=frame_indices, interval=100, blit=True)
     output_dir = f"./bi_figs/bi_animation_{option}.gif"
     ani.save(output_dir, writer=animation.PillowWriter(fps=20/frame_skip))
