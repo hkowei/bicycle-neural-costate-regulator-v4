@@ -65,6 +65,7 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
     # Initialize NN
     model = CoNN(n).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=4, threshold=5e-4, cooldown=2, min_lr=1e-5)
     old_epoch = 0
   
     if continue_training:
@@ -78,7 +79,15 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
         old_checkpoint_path = f"./checkpoint/bi_t0_ncr_N{n}_seed_{seed}_e{old_epoch}.pth"
         old_checkpoint = torch.load(old_checkpoint_path)
         model.load_state_dict(old_checkpoint["model_state_dict"])
+        required_keys = ["epoch","model_state_dict","optimizer_state_dict","scheduler_state_dict",]
+        for key in required_keys:
+            if key not in old_checkpoint:
+                raise KeyError(
+                    f"Checkpoint is missing '{key}'. "
+                    f"This file is probably from an old training version and cannot be resumed."
+                )
         optimizer.load_state_dict(old_checkpoint["optimizer_state_dict"])
+        scheduler.load_state_dict(old_checkpoint["scheduler_state_dict"])
         old_epoch_from_checkpoint = old_checkpoint["epoch"]
         if old_epoch != old_epoch_from_checkpoint:
             error_msg = f"Epoch mismatch: checkpoint epoch {old_epoch_from_checkpoint} does not match epoch from rundata {old_epoch}"
@@ -210,16 +219,20 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
 
         avg_loss = epoch_loss / len(dataset)
         avg_lambda_loss = epoch_lambda_loss / len(dataset)
-        print(f"********Epoch [{epoch + 1 + old_epoch}/{epochs}], Loss: {avg_loss:.2f}, Lambda Loss {avg_lambda_loss:.2f}********")
+        scheduler.step(avg_loss)
+        current_lr = optimizer.param_groups[0]["lr"]
+        print(f"********Epoch [{epoch + 1 + old_epoch}/{epochs}], Loss: {avg_loss:.2e}, Lambda Loss {avg_lambda_loss:.2f}, Current Learning Rate: {current_lr:.2e}********")
 
     # Save the trained model
-    torch.save(model.state_dict(), model_save_path)
-    print(f"Model saved to {model_save_path}")
+    # torch.save(model.state_dict(), model_save_path)
+    # print(f"Model saved to {model_save_path}")
     torch.save({
         "epoch": epochs,
         "model_state_dict": model.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
+        "scheduler_state_dict": scheduler.state_dict()
     }, checkpoint_path)
+    print(f"Checkpoint saved to {checkpoint_path}")
 
 if __name__ == '__main__':                 # 如果直接运行 train.py，就会执行下面的代码，进行训练；如果在其他文件 import train.py，则不会执行下面的代码
     seed = 0
@@ -228,7 +241,8 @@ if __name__ == '__main__':                 # 如果直接运行 train.py，就�
     # n = 5 # Prediction horizon
     # h = 50 # Terminal cost coefficient
     # epoch = 1
-    os.makedirs("./model", exist_ok=True)
+    # os.makedirs("./model", exist_ok=True)
+    os.makedirs("./checkpoint", exist_ok=True)
 
     # Step 1: Generate 1000 combinations of (x, y, theta)
     # Nsample = 2
