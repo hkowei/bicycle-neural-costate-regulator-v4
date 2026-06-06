@@ -208,7 +208,7 @@ def print_config():
     nn_str = "-".join(str(v) for v in CONN_HIDDEN_DIMS)
 
     training_info = (
-        f"N{n}_e{epoch}_dt{dt}_beta{beta}_betah{beta_h}_B{batch_size}"
+        f"N{n}_e{epoch}_dt{dt}_beta{beta:.3f}_betah{beta_h:.3f}_B{batch_size}"
         f"_R-{r1:.2f}-{r2:.2f}"
         f"_Q-{q1:.2f}-{q2:.2f}-{q3:.2f}-{q4:.2f}"
         f"_H-{h1}-{h2}-{h3}-{h4}"
@@ -285,7 +285,7 @@ def print_config():
 
     csv_row = (
         f"\"{final_state_str}\",{abs_convergence_err:.2f},"
-        f"{n},{epoch},{dt},{beta},{beta_h},{batch_size},"
+        f"{n},{epoch},{dt},{beta:.3f},{beta_h:.3f},{batch_size},"
         f"{R_str},{Q_str},{H_str},"
         f"{Nsample_str},{Rsample_str},"
         f"{nn_str},{lr},{bi_scaling},{rear_dist:.3f},{tot_dist:.3f},"

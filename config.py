@@ -11,14 +11,14 @@ total_steps_sim = int(T_sim/dt)
 
 # Training parameters
 n = 400 # Prediction horizon
-epoch = 100
-betav42 = 0.99
+epoch = 300
+betav42 = 0.99*dt_scale
 beta_h = betav42*100
 batch_size = 100
 
-r1 = 15.0*dt_scale; r2 = 3*dt_scale; 
+r1 = 20.0*dt_scale; r2 = 3*dt_scale; 
 q1 = 10.0*dt_scale; q2 = 30.0*dt_scale; q3 = 4*dt_scale; q4 = 50*dt_scale; 
-h1 = 1200; h2 = 1800; h3 = 1500; h4 = 3300.0
+h1 = 1500; h2 = 1600; h3 = 1600; h4 = 4000.0
 
 Nsample1, Nsample2, Nsample3, Nsample4 = 10, 10, 10, 10
 x_bound, y_bound, theta_bound, speed_bound = 2,2,2,2 #  sample range for initial states
