@@ -12,7 +12,7 @@ import time
 import argparse
 
 beta = betav42
-if VERSION != 'v4.2':
+if VERSION != 'v4.3':
     raise ValueError(f"Version mismatch: expected 'v4.2' but got {VERSION}")
 
 
@@ -65,7 +65,7 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
     # Initialize NN
     model = CoNN(n).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=4, threshold=5e-4, cooldown=2, min_lr=1e-5)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=6, threshold=5e-4, cooldown=2, min_lr=1e-5)
     old_epoch = 0
   
     if continue_training:
@@ -221,7 +221,7 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
         avg_lambda_loss = epoch_lambda_loss / len(dataset)
         scheduler.step(avg_loss)
         current_lr = optimizer.param_groups[0]["lr"]
-        print(f"********Epoch [{epoch + 1 + old_epoch}/{epochs}], Loss: {avg_loss:.2e}, Lambda Loss {avg_lambda_loss:.2f}, Current Learning Rate: {current_lr:.2e}********")
+        print(f"********Epoch [{epoch + 1 + old_epoch}/{epochs}], Loss: {avg_loss:.2f}, Lambda Loss {avg_lambda_loss:.2f}, Current Learning Rate: {current_lr:.2e}********")
 
     # Save the trained model
     # torch.save(model.state_dict(), model_save_path)

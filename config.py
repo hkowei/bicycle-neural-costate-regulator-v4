@@ -1,6 +1,6 @@
 import numpy as np
 
-VERSION = 'v4.2'
+VERSION = 'v4.3'
 
 dt = 0.01 # Sampling time
 dt_scale = dt / 0.05
@@ -10,21 +10,21 @@ total_steps_sim = int(T_sim/dt)
 
 
 # Training parameters
-n = 400 # Prediction horizon
-epoch = 300
+n = 500 # Prediction horizon
+epoch = 350
 betav42 = 0.99*dt_scale
-beta_h = betav42*100
+beta_h = betav42*20
 batch_size = 100
 
 r1 = 20.0*dt_scale; r2 = 3*dt_scale; 
 q1 = 10.0*dt_scale; q2 = 30.0*dt_scale; q3 = 4*dt_scale; q4 = 50*dt_scale; 
-h1 = 1500; h2 = 1600; h3 = 1600; h4 = 4000.0
+h1 = 600; h2 = 900; h3 = 700; h4 = 4000.0
 
 Nsample1, Nsample2, Nsample3, Nsample4 = 10, 10, 10, 10
 x_bound, y_bound, theta_bound, speed_bound = 2,2,2,2 #  sample range for initial states
 
 CONN_HIDDEN_DIMS = [128, 512, 128]
-lr = 1e-3
+lr = 2e-3
 
 bi_scaling = 1
 rear_dist = 0.4*bi_scaling # important note: rear_dist right now is actually used as the length of the whole bicycle
