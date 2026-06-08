@@ -6,14 +6,14 @@ import torch.nn as nn
 from torchdiffeq import odeint # Use odeint for integration
 import numpy as np
 from bi_utils_debug import set_seed, train_rk4
-from config import dt, betav42, beta_h, rear_dist, CONN_HIDDEN_DIMS, q1, q2, q3, q4, r1, r2, n, h1, h2, h3, h4, epoch, batch_size, Nsample1, Nsample2, Nsample3, Nsample4, x_bound, y_bound, theta_bound, speed_bound, lr, VERSION
+from config import dt, betav42, beta_h, rear_dist, CONN_HIDDEN_DIMS, q1, q2, q3, q4, r1, r2, n, h1, h2, h3, h4, epoch, batch_size, Nsample1, Nsample2, Nsample3, Nsample4, x_bound, y_bound, theta_bound, speed_bound, lr, VERSION, lr_factor, lr_patience, lr_threshold, lr_cooldown, min_lr
 from torchdiffeq import odeint
 import time
 import argparse
 
 beta = betav42
-if VERSION != 'v4.3':
-    raise ValueError(f"Version mismatch: expected 'v4.2' but got {VERSION}")
+if VERSION != 'v4.4':
+    raise ValueError(f"Version mismatch: expected 'v4.4' but got {VERSION}")
 
 
 # Step 2: Create Dataset Class
@@ -65,7 +65,7 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
     # Initialize NN
     model = CoNN(n).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=6, threshold=5e-4, cooldown=2, min_lr=1e-5)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=lr_factor, patience=lr_patience, threshold=lr_threshold, cooldown=lr_cooldown, min_lr=min_lr)
     old_epoch = 0
   
     if continue_training:

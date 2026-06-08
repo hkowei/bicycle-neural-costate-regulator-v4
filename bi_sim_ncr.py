@@ -200,7 +200,7 @@ from config import (
     h1, h2, h3, h4,
     Nsample1, Nsample2, Nsample3, Nsample4,
     x_bound, y_bound, theta_bound, speed_bound,
-    CONN_HIDDEN_DIMS, lr,
+    CONN_HIDDEN_DIMS, lr, lr_factor, lr_patience, lr_threshold, lr_cooldown, min_lr,
     bi_scaling, rear_dist, tot_dist,
     u_a_min, u_a_max,
     u_s_min, u_s_max,
@@ -219,7 +219,7 @@ def print_config():
         f"_Nsample-{Nsample1}-{Nsample2}-{Nsample3}-{Nsample4}"
         f"_Rsample-{x_bound}-{y_bound}-{theta_bound}-{speed_bound}"
         f"_NN-{nn_str}"
-        f"_lr{lr}"
+        f"_lr0{lr}-factor{lr_factor}-patience{lr_patience}-thres{lr_threshold}-cd{lr_cooldown}-minlr{min_lr}"
         f"_scale{bi_scaling}"
         f"_rear{rear_dist:.3f}"
         f"_L{tot_dist:.3f}"
@@ -292,7 +292,7 @@ def print_config():
         f"{n},{epoch},{dt},{beta:.3f},{beta_h:.3f},{batch_size},"
         f"{R_str},{Q_str},{H_str},"
         f"{Nsample_str},{Rsample_str},"
-        f"{nn_str},{lr},{bi_scaling},{rear_dist:.3f},{tot_dist:.3f},"
+        f"{nn_str},{lr},{lr_factor},{lr_patience},{lr_threshold},{lr_cooldown},{min_lr},{bi_scaling},{rear_dist:.3f},{tot_dist:.3f},"
         f"{um_str},{case},"
         f"\"{state0_str}\",\"{ref_str}\","
     )
