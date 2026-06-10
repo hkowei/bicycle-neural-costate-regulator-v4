@@ -5,7 +5,7 @@ VERSION = 'v4.4'
 dt = 0.01 # Sampling time
 dt_scale = dt / 0.05
 # Total time of simulation and time steps
-T_sim = 20
+T_sim = 100
 total_steps_sim = int(T_sim/dt)
 
 
@@ -16,7 +16,7 @@ betav42 = 0.99*dt_scale
 beta_h = betav42*20
 batch_size = 100
 
-r1 = 20.0*dt_scale; r2 = 3*dt_scale; 
+r1 = 30.0*dt_scale; r2 = 10*dt_scale; 
 q1 = 10.0*dt_scale; q2 = 30.0*dt_scale; q3 = 4*dt_scale; q4 = 50*dt_scale; 
 h1 = 600; h2 = 900; h3 = 700; h4 = 4000.0
 
