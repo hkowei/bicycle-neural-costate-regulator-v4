@@ -5,20 +5,20 @@ VERSION = 'v4.4'
 dt = 0.01 # Sampling time
 dt_scale = dt / 0.05
 # Total time of simulation and time steps
-T_sim = 20
+T_sim = 100
 total_steps_sim = int(T_sim/dt)
 
 
 # Training parameters
 n = 500 # Prediction horizon
-epoch = 300
+epoch = 100
 betav42 = 0.99*dt_scale
 beta_h = betav42*20
 batch_size = 100
 
 r1 = 30.0*dt_scale; r2 = 10*dt_scale; 
 q1 = 10.0*dt_scale; q2 = 30.0*dt_scale; q3 = 4*dt_scale; q4 = 50*dt_scale; 
-h1 = 600; h2 = 900; h3 = 900; h4 = 4000.0
+h1 = 600; h2 = 900; h3 = 700; h4 = 4000.0
 
 Nsample1, Nsample2, Nsample3, Nsample4 = 10, 10, 10, 10
 x_bound, y_bound, theta_bound, speed_bound = 2,2,2,2 #  sample range for initial states
@@ -26,7 +26,7 @@ x_bound, y_bound, theta_bound, speed_bound = 2,2,2,2 #  sample range for initial
 CONN_HIDDEN_DIMS = [128, 512, 128]
 lr = 1e-3   # starting learning rate
 lr_factor = 0.5
-lr_patience = 10
+lr_patience = 15
 lr_threshold = 1e-4
 lr_cooldown = 5
 min_lr = 1e-5

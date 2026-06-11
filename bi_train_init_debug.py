@@ -198,6 +198,12 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
                 #     #     print("max diff =", torch.max(torch.abs(state_k - state_new)))
                 #     state_k = result[-1,:,:4]                               # 这里的state_k 是 1,4 的 tensor，代表下一时刻的状态。result只取前四位的状态变量
                 # else:
+                if not torch.isfinite(state_k).all():
+                    raise ValueError(f"state_k has non-finite values at epoch {epoch}, batch {batch_idx}, step {i}")
+                if not torch.isfinite(u_opt).all():
+                    raise ValueError(f"u_opt has non-finite values at epoch {epoch}, batch {batch_idx}, step {i}")
+                if not torch.isfinite(costate_traj_k_hat).all():
+                    raise ValueError(f"costate_traj_k_hat has non-finite values at epoch {epoch}, batch {batch_idx}, step {i}")
                 state_k = train_rk4(state_k, u_opt)
                 # dyn_end_time = time.time()
                 # dyn_duration += dyn_end_time - dyn_start_time
@@ -222,6 +228,14 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
         scheduler.step(avg_loss)
         current_lr = optimizer.param_groups[0]["lr"]
         print(f"********Epoch [{epoch + 1 + old_epoch}/{epochs}], Loss: {avg_loss:.2f}, Lambda Loss {avg_lambda_loss:.2f}, Current Learning Rate: {current_lr:.2e}********")
+        temp_checkpoint_path = f"./checkpoint/temp.pth"
+        torch.save({
+            "epoch": epoch+1+old_epoch,
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "scheduler_state_dict": scheduler.state_dict()
+        }, temp_checkpoint_path)
+        print(f"Checkpoint saved to {temp_checkpoint_path}")
 
     # Save the trained model
     # torch.save(model.state_dict(), model_save_path)
