@@ -5,13 +5,13 @@ VERSION = 'v4.4'
 dt = 0.01 # Sampling time
 dt_scale = dt / 0.05
 # Total time of simulation and time steps
-T_sim = 100
+T_sim = 20
 total_steps_sim = int(T_sim/dt)
 
 
 # Training parameters
 n = 500 # Prediction horizon
-epoch = 100
+epoch = 250
 betav42 = 0.99*dt_scale
 beta_h = betav42*20
 batch_size = 100
@@ -41,7 +41,7 @@ u_a_min = -3
 u_a_max = 3
 u_s_min = -2    # beta should be small
 u_s_max = 2
-case = 'a'
+case = 'b'
 state_0a = np.array([[-2, 2, -1.79, 0]])
-state_0b = np.array([[-5.24, 4.11, 2.72, 0]])
+state_0b = np.array([[6, 6, 2.72, 0]])
 x_ref = 1; y_ref = 1; theta_ref = 0; speed_ref = 0

@@ -235,7 +235,7 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
             "optimizer_state_dict": optimizer.state_dict(),
             "scheduler_state_dict": scheduler.state_dict()
         }, temp_checkpoint_path)
-        print(f"Checkpoint saved to {temp_checkpoint_path}")
+        # print(f"Checkpoint saved to {temp_checkpoint_path}")
 
     # Save the trained model
     # torch.save(model.state_dict(), model_save_path)
