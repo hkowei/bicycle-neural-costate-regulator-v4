@@ -59,24 +59,26 @@ def train_rk4(z, u):
     z_next = z + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
     return z_next
 
-def plot_traj(state_mpc, u_mpc, time, h, option):
+def bi_mpc_plot_traj(state_mpc, u_mpc, time, option):
     import os
-    os.makedirs("./figs", exist_ok=True)
+    os.makedirs("./bi_figs", exist_ok=True)
     x_mpc = state_mpc[:, 0]
     y_mpc = state_mpc[:, 1]
     theta_mpc = state_mpc[:,2]
+    speed_mpc = state_mpc[:,3]
 
-    v_mpc = u_mpc[:,0]
-    w_mpc = u_mpc[:,1]
+    u_a_mpc = u_mpc[:,0]
+    u_s_mpc = u_mpc[:,1]
 
     # Plot State Trajectory
     plt.figure(figsize=(12, 6))
     plt.subplot(1, 2, 1)
     len_state_mpc = len(x_mpc)
-    len_u_mpc = len(v_mpc)
+    len_u_mpc = len(u_a_mpc)
     plt.plot(time[:len_state_mpc], x_mpc, linestyle='-', dashes=[3, 1], linewidth=5, label=r"$x_{mpc}$")
     plt.plot(time[:len_state_mpc], y_mpc, linestyle='-', dashes=[3, 1], linewidth=5, label=r"$y_{mpc}$")
     plt.plot(time[:len_state_mpc], theta_mpc, linestyle='-', dashes=[3, 1], linewidth=5, label=r"$\theta_{mpc}$")
+    plt.plot(time[:len_state_mpc], speed_mpc, linestyle='-', dashes=[3, 1], linewidth=5, label=r"$speed_{mpc}$")
     plt.xlabel("Time (s)",fontsize=20, fontweight='bold')
     plt.ylabel("State Trajectory",fontsize=20, fontweight='bold')
     plt.legend(fontsize=28)
@@ -87,8 +89,8 @@ def plot_traj(state_mpc, u_mpc, time, h, option):
     # Plot Control input trajectory
     plt.subplot(1, 2, 2)
 
-    plt.plot(time[:len_u_mpc], v_mpc, linestyle='-', dashes=[3, 1], linewidth=5, label=r"$v_{mpc}$")
-    plt.plot(time[:len_u_mpc], w_mpc, linestyle='-', dashes=[3, 1], linewidth=5, label=r"$w_{mpc}$")
+    plt.plot(time[:len_u_mpc], u_a_mpc, linestyle='-', dashes=[3, 1], linewidth=5, label=r"$u_{a,mpc}$")
+    plt.plot(time[:len_u_mpc], u_s_mpc, linestyle='-', dashes=[3, 1], linewidth=5, label=r"$u_{s,mpc}$")
     plt.xlabel("Time (s)",fontsize=20, fontweight='bold')
     plt.ylabel("Control Input",fontsize=20, fontweight='bold')
     plt.legend(fontsize=28)
@@ -96,7 +98,7 @@ def plot_traj(state_mpc, u_mpc, time, h, option):
     plt.xticks(fontsize=24, fontweight='bold')
     plt.yticks(fontsize=24, fontweight='bold')
     plt.tight_layout()
-    output_dir = f'./figs/mpc_N{n}_h{h}_{option}.png'
+    output_dir = f'./bi_figs/bi_mpc_N{n}_{option}.png'
     plt.savefig(output_dir, dpi=300)
     plt.close()
 

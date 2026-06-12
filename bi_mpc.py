@@ -1,70 +1,76 @@
 import casadi as ca
 import numpy as np
-from mpc import MPC
-from config import dt, T_sim, total_steps_sim, N, v_max, v_min, w_max, w_min
-from utils import plot_traj
+from config import (dt, T_sim, total_steps_sim, n, 
+                    u_a_min, u_a_max, u_s_min, u_s_max,
+                    rear_dist, h1, h2, h3, h4,
+                    q1,q2,q3,q4,r1,r2,
+                    x_ref,y_ref,theta_ref,speed_ref,
+                    state_0a,state_0b)
+from bi_utils_debug import bi_mpc_plot_traj, save_animation_bicycle_trajectory
 import time
 
-class MPC:
-    def __init__(self, dt, N, v_min, v_max, w_min, w_max):
+class bi_MPC:
+    def __init__(self, dt, n, u_a_min, u_a_max, u_s_min, u_s_max):
         # System parameters
         self.dt = dt
-        self.N = N
-        self.v_min = v_min
-        self.v_max = v_max
-        self.w_min = w_min
-        self.w_max = w_max
+        self.n = n
+        self.u_a_min = u_a_min
+        self.u_a_max = u_a_max
+        self.u_s_min = u_s_min
+        self.u_s_max = u_s_max
 
-    def dynamics(self, x, u):
-        # Unicycle model dynamics
-        theta = x[2]
-        V, omega = u[0], u[1]
-        x_dot = V * ca.cos(theta)
-        y_dot = V * ca.sin(theta)
-        theta_dot = omega
-        return ca.vertcat(x_dot, y_dot, theta_dot)
+    def dynamics(self, z, u):
+        # Bicycle model dynamics
+        theta = z[2]
+        speed = z[3]
+        u_a, u_s = u[0], u[1]
+        x_dot = speed * ca.cos(theta) - speed * ca.sin(theta) * u_s
+        y_dot = speed * ca.sin(theta) + speed * ca.cos(theta) * u_s
+        theta_dot = speed/rear_dist * u_s
+        speed_dot = u_a
+        return ca.vertcat(x_dot, y_dot, theta_dot, speed_dot)
 
-    def rk4(self, x, u):
+    def rk4(self, z, u):
         # RK4 integration step for dynamics
-        k1 = self.dynamics(x, u)
-        k2 = self.dynamics(x + self.dt / 2 * k1, u)
-        k3 = self.dynamics(x + self.dt / 2 * k2, u)
-        k4 = self.dynamics(x + self.dt * k3, u)
-        x_next = x + self.dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
-        return x_next
+        k1 = self.dynamics(z, u)
+        k2 = self.dynamics(z + self.dt / 2 * k1, u)
+        k3 = self.dynamics(z + self.dt / 2 * k2, u)
+        k4 = self.dynamics(z + self.dt * k3, u)
+        z_next = z + self.dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
+        return z_next
 
-    def get_control_input(self, current_state, ref_traj, h):
+    def get_control_input(self, current_state, ref_traj):
         # Define control decision variables (U only, for shooting method)
-        U = ca.MX.sym("U", 2, self.N)
+        U = ca.MX.sym("U", 2, self.n)
 
         # Objective and cost weights
         obj = 0
-        Q = np.diag([10, 10, 10])  # State cost weights
-        R = np.diag([1, 1])   # Control cost weights
-        H = h*Q
+        Q = np.diag([q1,q2,q3,q4])  # State cost weights
+        R = np.diag([r1,r2])   # Control cost weights
+        H = np.diag([h1,h2,h3,h4])
 
         # Constraints for control inputs only
-        lbu = [self.v_min, self.w_min] * self.N
-        ubu = [self.v_max, self.w_max] * self.N
+        lbu = [self.u_a_min, self.u_s_min] * self.n
+        ubu = [self.u_a_max, self.u_s_max] * self.n
 
         # Initial state
-        x_k = current_state
-        x_k = ca.reshape(x_k, -1, 1)
+        z_k = current_state
+        z_k = ca.reshape(z_k, -1, 1)
         # Build the objective by simulating forward using rk4 and accumulating cost
-        for k in range(self.N):
+        for k in range(self.n):
             # Get control input at step k
             u_k = U[:, k]
             ref_k = ref_traj[:, k]
             ref_k = ca.reshape(ref_k, -1, 1)
 
             # Compute the cost
-            obj += ca.mtimes((x_k - ref_k).T, Q @ (x_k - ref_k)) + ca.mtimes(u_k.T, R @ u_k)
+            obj += ca.mtimes((z_k - ref_k).T, Q @ (z_k - ref_k)) + ca.mtimes(u_k.T, R @ u_k)
 
             # Forward propagate the state using rk4 with the control input
-            x_k = self.rk4(x_k, u_k)
+            z_k = self.rk4(z_k, u_k)
             
         # Add terminal cost
-        obj += ca.mtimes((x_k - ref_traj[:, k+1]).T, H @ (x_k - ref_traj[:, k+1]))
+        obj += ca.mtimes((z_k - ref_traj[:, k+1]).T, H @ (z_k - ref_traj[:, k+1]))
 
         # Define the optimization problem
         nlp = {'f': obj, 'x': ca.reshape(U, -1, 1)}
@@ -79,17 +85,17 @@ class MPC:
     
 
 
-def simulation(x_0, traj_ref, h):
-    state_traj = [x_0]
+def simulation(z_0, traj_ref):
+    state_traj = [z_0]
     control_traj = []
 
     x_k = x_0
     # Simulation loop
     for k in range(total_steps_sim):
         # Calculate control input
-        ref_traj_segment = traj_ref[:, k:k + N + 1]
-        u_k = controller.get_control_input(x_k, ref_traj_segment, h)
-        print(f'MPC N={N} - timestep: {k} finished')
+        ref_traj_segment = traj_ref[:, k:k + n + 1]
+        u_k = controller.get_control_input(x_k, ref_traj_segment)
+        print(f'MPC N={n} - timestep: {k} finished')
         
         control_traj.append(u_k)
         x_k = controller.rk4(x_k, u_k)
@@ -101,9 +107,6 @@ def simulation(x_0, traj_ref, h):
     return state_traj, control_traj
 
 if __name__ == '__main__':
-    state_0a = np.array([[-1.16, 1.37, -1.79]])
-    state_0b = np.array([[-5.24, 4.11, 2.72]])
-    state_0c = state_0b
 
     # Change case to a, b or c here
     initial_state_option = 'c'
@@ -112,27 +115,27 @@ if __name__ == '__main__':
     elif initial_state_option == 'b':
         state_0 = state_0b
     else:
-        state_0 = state_0c
+        state_0 = state_0b
         # Define reference state
         x_ref = 1; y_ref = 1; theta_ref = 0
     
     
-    t_span = np.arange(0, T_sim + N * dt, dt)
-    traj_ref = np.zeros((3, total_steps_sim + N))
+    t_span = np.arange(0, T_sim + n * dt, dt)
+    traj_ref = np.zeros((4, total_steps_sim + n))
     if initial_state_option == 'c':
         traj_ref[0,:] = x_ref
         traj_ref[1,:] = y_ref
         traj_ref[2,:] = theta_ref
+        traj_ref[3,:] = speed_ref
 
     # Initialize controller and initial state
-    controller = MPC(dt, N, v_min, v_max, w_min, w_max)
-    robot_x0 = state_0[0,0]; robot_y0 = state_0[0,1]; robot_theta0 = state_0[0,2]
-    x_0 = np.array([robot_x0, robot_y0, robot_theta0])
-    h = 50 # Terminal cost coefficient
+    controller = bi_MPC(dt, n, u_a_min, u_a_max, u_s_min, u_s_max)
+    robot_x0 = state_0[0,0]; robot_y0 = state_0[0,1]; robot_theta0 = state_0[0,2]; robot_speed0 = state_0[0,3]
+    x_0 = np.array([robot_x0, robot_y0, robot_theta0, robot_speed0])
     
     # Start timing
     start_time = time.time()
-    state_traj, control_traj = simulation(x_0, traj_ref, h)
+    state_traj, control_traj = simulation(x_0, traj_ref)
     # End timing
     end_time = time.time()
     
@@ -142,40 +145,47 @@ if __name__ == '__main__':
     print(f"Simulation executed in {execution_time:.2f}s, time per step: {time_per_step:.4f}s")
 
     # Plot state and control trajectories
-    plot_traj(state_mpc=state_traj, u_mpc=control_traj, 
-              time=t_span, h=h, option=initial_state_option)
+    bi_mpc_plot_traj(state_mpc=state_traj, u_mpc=control_traj, 
+              time=t_span, option=initial_state_option)
     
     x_mpc = state_traj[:, 0]
     y_mpc = state_traj[:, 1]
     theta_mpc = state_traj[:,2]
-    v_mpc = control_traj[:, 0, 0]
-    w_mpc = control_traj[:, 1, 0]
+    speed_mpc = state_traj[:,3]
+    u_a_mpc = control_traj[:, 0, 0]
+    u_s_mpc = control_traj[:, 1, 0]
 
     # Compute trajectory gradients (numerical derivatives)
     x_traj_grad = np.gradient(x_mpc, dt)
     y_traj_grad = np.gradient(y_mpc, dt)
     theta_traj_grad = np.gradient(theta_mpc, dt)
+    speed_traj_grad = np.gradient(speed_mpc, dt)
 
-    v_traj_grad = np.gradient(v_mpc, dt)
-    w_traj_grad = np.gradient(w_mpc, dt)
+    u_a_traj_grad = np.gradient(u_a_mpc, dt)
+    u_s_traj_grad = np.gradient(u_s_mpc, dt)
 
     # Compute mean squared derivative
     x_traj_msd = np.mean(x_traj_grad ** 2)
     y_traj_msd = np.mean(y_traj_grad ** 2)
     theta_traj_msd = np.mean(theta_traj_grad ** 2)
-    avg_state_msd = (x_traj_msd + y_traj_msd + theta_traj_msd) / 3
+    speed_traj_msd = np.mean(speed_traj_grad ** 2)
+    avg_state_msd = (x_traj_msd + y_traj_msd + theta_traj_msd + speed_traj_msd) / 4
     print(f"Average State Trajectory Mean Squared derivatives {avg_state_msd:.2f}")
 
-    v_traj_msd = np.mean(v_traj_grad ** 2)
-    w_traj_msd = np.mean(w_traj_grad ** 2)
-    avg_u_msd = (v_traj_msd + w_traj_msd) / 2
+    u_a_traj_msd = np.mean(u_a_traj_grad ** 2)
+    u_s_traj_msd = np.mean(u_s_traj_grad ** 2)
+    avg_u_msd = (u_a_traj_msd + u_s_traj_msd) / 2
     print(f"Average Control Input Trajectory Mean Squared derivatives {avg_u_msd:.2f}")
 
     # Calculate absolute convergence error
     if initial_state_option == 'c':
-        abs_convergence_err = abs(x_mpc[-1] - x_ref) + abs(y_mpc[-1] - y_ref) + abs(theta_mpc[-1] - theta_ref)
+        abs_convergence_err = abs(x_mpc[-1] - x_ref) + abs(y_mpc[-1] - y_ref) + abs(theta_mpc[-1] - theta_ref) + abs(speed_mpc[-1] - speed_ref)
     else:
-        abs_convergence_err = abs(x_mpc[-1]) + abs(y_mpc[-1]) + abs(theta_mpc[-1])
-    print(f'Final state: [{x_mpc[-1]:.2f}; {y_mpc[-1]:.2f}; {theta_mpc[-1]:.2f}]')
+        abs_convergence_err = abs(x_mpc[-1]) + abs(y_mpc[-1]) + abs(theta_mpc[-1]) + abs(speed_mpc[-1])
+    print(f'Final state: [{x_mpc[-1]:.2f}; {y_mpc[-1]:.2f}; {theta_mpc[-1]:.2f}]; {speed_mpc[-1]:.2f}')
     print(f'Absolute convergence error: {abs_convergence_err:.2f}')
 
+    fig_name = f'bi_robot_animation_mpc_N{n}_{initial_state_option}.gif'
+    save_animation_bicycle_trajectory(x_robot=x_mpc, y_robot=y_mpc, theta_robot=theta_mpc, speed_robot=speed_mpc, u_s_robot=u_s_mpc, initial_state_option = initial_state_option, gif_name = fig_name, start_xy=None, goal_xy=None, obstacles=None,
+                                     robot_r=0.25, margin=0.05)
+ 
