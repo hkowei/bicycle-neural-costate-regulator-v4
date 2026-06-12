@@ -2,15 +2,15 @@ import numpy as np
 
 VERSION = 'v4.4'
 
-dt = 0.05 # Sampling time
+dt = 0.01 # Sampling time
 dt_scale = dt / 0.05
 # Total time of simulation and time steps
-T_sim = 10
+T_sim = 1
 total_steps_sim = int(T_sim/dt)
 
 
 # Training parameters
-n = int(5/dt) # Prediction horizon
+n = int(2/dt) # Prediction horizon
 epoch = 300
 betav42 = 0.99*dt_scale
 beta_h = betav42*20

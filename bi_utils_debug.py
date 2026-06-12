@@ -59,7 +59,7 @@ def train_rk4(z, u):
     z_next = z + dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
     return z_next
 
-def bi_mpc_plot_traj(state_mpc, u_mpc, time, option):
+def bi_mpc_plot_traj(state_mpc, u_mpc, time, option,dt_mpc,dt_pred):
     import os
     os.makedirs("./bi_figs", exist_ok=True)
     x_mpc = state_mpc[:, 0]
@@ -98,7 +98,7 @@ def bi_mpc_plot_traj(state_mpc, u_mpc, time, option):
     plt.xticks(fontsize=24, fontweight='bold')
     plt.yticks(fontsize=24, fontweight='bold')
     plt.tight_layout()
-    output_dir = f'./bi_figs/bi_mpc_N{n}_dt{dt}_{option}.png'
+    output_dir = f'./bi_figs/bi_mpc_N{n}_dt{dt}_dtmpc{dt_mpc}_dtpred{dt_pred}_{option}.png'
     plt.savefig(output_dir, dpi=300)
     plt.close()
 

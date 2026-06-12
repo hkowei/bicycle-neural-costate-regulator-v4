@@ -10,15 +10,25 @@ from bi_utils_debug import bi_mpc_plot_traj, save_animation_bicycle_trajectory
 import time
 
 prediction_time = n * dt
-dt_mpc = 0.1
-dt_pred = 0.1
-
+# dt_mpc = 0.1
+# dt_pred = 0.1
+dtmpc_ratio = 5 #int(dt_mpc/dt)
+dtpred_ratio = 5 # int(dt_pred/dt)
+dt_mpc = dtmpc_ratio * dt
+dt_pred = dtpred_ratio * dt
+mpc_pred_horizon = int(prediction_time / dt_pred)
+print(f'dt = {dt}\n'
+      f'dt_mpc = {dt_mpc}\n'
+      f'dt_pred = {dt_pred}\n'
+      f'mpc prediction horizon = {mpc_pred_horizon}')
 
 class bi_MPC:
-    def __init__(self, dt, n, u_a_min, u_a_max, u_s_min, u_s_max):
+    def __init__(self, dt, dt_pred, n, mpc_pred_horizon, u_a_min, u_a_max, u_s_min, u_s_max):
         # System parameters
         self.dt = dt
-        self.n = n
+        self.dt_pred = dt_pred
+        # self.n = n
+        self.mpc_pred_horizon = mpc_pred_horizon
         self.u_a_min = u_a_min
         self.u_a_max = u_a_max
         self.u_s_min = u_s_min
@@ -35,34 +45,34 @@ class bi_MPC:
         speed_dot = u_a
         return ca.vertcat(x_dot, y_dot, theta_dot, speed_dot)
 
-    def rk4(self, z, u):
+    def rk4(self, z, u, dt_step):    # for prediction use dt_pred rather than dt
         # RK4 integration step for dynamics
         k1 = self.dynamics(z, u)
-        k2 = self.dynamics(z + self.dt / 2 * k1, u)
-        k3 = self.dynamics(z + self.dt / 2 * k2, u)
-        k4 = self.dynamics(z + self.dt * k3, u)
-        z_next = z + self.dt / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
+        k2 = self.dynamics(z + dt_step / 2 * k1, u)
+        k3 = self.dynamics(z + dt_step / 2 * k2, u)
+        k4 = self.dynamics(z + dt_step * k3, u)
+        z_next = z + dt_step / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
         return z_next
 
-    def get_control_input(self, current_state, ref_traj):
+    def get_control_input(self, current_state, ref_traj, initial_input_guess):
         # Define control decision variables (U only, for shooting method)
-        U = ca.MX.sym("U", 2, self.n)
+        U = ca.MX.sym("U", 2, self.mpc_pred_horizon)
 
         # Objective and cost weights
         obj = 0
-        Q = np.diag([q1,q2,q3,q4])  # State cost weights
-        R = np.diag([r1,r2])   # Control cost weights
-        H = np.diag([h1,h2,h3,h4])
+        Q = np.diag([q1,q2,q3,q4]) * dtpred_ratio  # State cost weights
+        R = np.diag([r1,r2]) * dtpred_ratio  # Control cost weights
+        H = np.diag([h1,h2,h3,h4]) * dtpred_ratio
 
         # Constraints for control inputs only
-        lbu = [self.u_a_min, self.u_s_min] * self.n
-        ubu = [self.u_a_max, self.u_s_max] * self.n
+        lbu = [self.u_a_min, self.u_s_min] * self.mpc_pred_horizon
+        ubu = [self.u_a_max, self.u_s_max] * self.mpc_pred_horizon
 
         # Initial state
         z_k = current_state
         z_k = ca.reshape(z_k, -1, 1)
         # Build the objective by simulating forward using rk4 and accumulating cost
-        for k in range(self.n):
+        for k in range(self.mpc_pred_horizon):
             # Get control input at step k
             u_k = U[:, k]
             ref_k = ref_traj[:, k]
@@ -72,37 +82,43 @@ class bi_MPC:
             obj += ca.mtimes((z_k - ref_k).T, Q @ (z_k - ref_k)) + ca.mtimes(u_k.T, R @ u_k)
 
             # Forward propagate the state using rk4 with the control input
-            z_k = self.rk4(z_k, u_k)
+            z_k = self.rk4(z_k, u_k, dt_pred)
             
         # Add terminal cost
         obj += ca.mtimes((z_k - ref_traj[:, k+1]).T, H @ (z_k - ref_traj[:, k+1]))
 
         # Define the optimization problem
         nlp = {'f': obj, 'x': ca.reshape(U, -1, 1)}
-        opts = {'ipopt.print_level':1,'print_time': 0}
+        opts = {'ipopt.print_level':1,'print_time': 0,"ipopt.sb":"yes"}
         solver = ca.nlpsol('S', 'ipopt', nlp, opts)
 
         # Solve the optimization problem
-        sol = solver(lbx=lbu, ubx=ubu)
+        sol = solver(x0 = initial_input_guess, lbx=lbu, ubx=ubu)
         u_opt_traj = sol["x"].full()
         u = u_opt_traj[:2]
-        return u  # Return only the first control action
+        return u_opt_traj  # Return only the first control action
     
-    
+
 def simulation(z_0, traj_ref):
     state_traj = [z_0]
     control_traj = []
 
-    x_k = x_0
+    x_k = z_0
     # Simulation loop
+    u_k = np.array([0,0])
+    u_pred_traj = np.zeros((2 * mpc_pred_horizon,1))
     for k in range(total_steps_sim):
         # Calculate control input
-        ref_traj_segment = traj_ref[:, k:k + n + 1]
-        u_k = controller.get_control_input(x_k, ref_traj_segment)
+        # ref_traj_segment = traj_ref[:, k:k + n + 1]
+        ref_traj_segment = traj_ref[:, k : k + mpc_pred_horizon * dtpred_ratio + 1 : dtpred_ratio]
+        if (k) % dtmpc_ratio == 0: 
+            u_pred_traj = controller.get_control_input(x_k, ref_traj_segment, initial_input_guess=u_pred_traj)
+            u_k = u_pred_traj[:2]
+            print(f'MPC input update')
         print(f'MPC N={n} - timestep: {k} finished')
         
         control_traj.append(u_k)
-        x_k = controller.rk4(x_k, u_k)
+        x_k = controller.rk4(x_k, u_k, dt)
         x_k = x_k.full().flatten().tolist()
         state_traj.append(x_k)
     # Convert state and control trajectories to numpy arrays for plotting
@@ -133,7 +149,7 @@ if __name__ == '__main__':
         traj_ref[3,:] = speed_ref
 
     # Initialize controller and initial state
-    controller = bi_MPC(dt, n, u_a_min, u_a_max, u_s_min, u_s_max)
+    controller = bi_MPC(dt, dt_pred, n, mpc_pred_horizon, u_a_min, u_a_max, u_s_min, u_s_max)
     robot_x0 = state_0[0,0]; robot_y0 = state_0[0,1]; robot_theta0 = state_0[0,2]; robot_speed0 = state_0[0,3]
     x_0 = np.array([robot_x0, robot_y0, robot_theta0, robot_speed0])
     
@@ -150,7 +166,7 @@ if __name__ == '__main__':
 
     # Plot state and control trajectories
     bi_mpc_plot_traj(state_mpc=state_traj, u_mpc=control_traj, 
-              time=t_span, option=initial_state_option)
+              time=t_span, option=initial_state_option, dt_mpc=dt_mpc,dt_pred=dt_pred)
     
     x_mpc = state_traj[:, 0]
     y_mpc = state_traj[:, 1]
@@ -189,7 +205,7 @@ if __name__ == '__main__':
     print(f'Final state: [{x_mpc[-1]:.2f}; {y_mpc[-1]:.2f}; {theta_mpc[-1]:.2f}; {speed_mpc[-1]:.2f}]')
     print(f'Absolute convergence error: {abs_convergence_err:.2f}')
 
-    fig_name = f'bi_robot_animation_mpc_N{n}_dt{dt}_{initial_state_option}.gif'
+    fig_name = f'bi_robot_animation_mpc_N{n}_dt{dt}_dtmpc{dt_mpc}_dtpred{dt_pred}_{initial_state_option}.gif'
     save_animation_bicycle_trajectory(x_robot=x_mpc, y_robot=y_mpc, theta_robot=theta_mpc, speed_robot=speed_mpc, u_s_robot=u_s_mpc, initial_state_option = initial_state_option, gif_name = fig_name, start_xy=None, goal_xy=None, obstacles=None,
                                      robot_r=0.25, margin=0.05)
  
