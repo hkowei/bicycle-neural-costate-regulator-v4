@@ -2,21 +2,21 @@ import numpy as np
 
 VERSION = 'v4.4'
 
-dt = 0.5 # Sampling time
+dt = 0.05 # Sampling time
 dt_scale = dt / 0.05
 # Total time of simulation and time steps
-T_sim = 20
+T_sim = 10
 total_steps_sim = int(T_sim/dt)
 
 
 # Training parameters
-n = 500 # Prediction horizon
-epoch = 250
+n = int(5/dt) # Prediction horizon
+epoch = 300
 betav42 = 0.99*dt_scale
 beta_h = betav42*20
 batch_size = 100
 
-r1 = 30.0*dt_scale; r2 = 5*dt_scale; 
+r1 = 20.0*dt_scale; r2 = 3*dt_scale; 
 q1 = 10.0*dt_scale; q2 = 30.0*dt_scale; q3 = 4*dt_scale; q4 = 50*dt_scale; 
 h1 = 600; h2 = 900; h3 = 700; h4 = 4000.0
 
@@ -43,5 +43,5 @@ u_s_min = -2    # beta should be small
 u_s_max = 2
 case = 'b'
 state_0a = np.array([[-2, 2, -1.79, 0]])
-state_0b = np.array([[6, 6, 2.72, 0]])
+state_0b = np.array([[6, 6, 2.63, 0.00]])
 x_ref = 1; y_ref = 1; theta_ref = 0; speed_ref = 0

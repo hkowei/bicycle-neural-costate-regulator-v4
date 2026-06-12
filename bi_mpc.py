@@ -9,6 +9,11 @@ from config import (dt, T_sim, total_steps_sim, n,
 from bi_utils_debug import bi_mpc_plot_traj, save_animation_bicycle_trajectory
 import time
 
+prediction_time = n * dt
+dt_mpc = 0.1
+dt_pred = 0.1
+
+
 class bi_MPC:
     def __init__(self, dt, n, u_a_min, u_a_max, u_s_min, u_s_max):
         # System parameters
@@ -83,8 +88,7 @@ class bi_MPC:
         u = u_opt_traj[:2]
         return u  # Return only the first control action
     
-
-
+    
 def simulation(z_0, traj_ref):
     state_traj = [z_0]
     control_traj = []
@@ -182,10 +186,10 @@ if __name__ == '__main__':
         abs_convergence_err = abs(x_mpc[-1] - x_ref) + abs(y_mpc[-1] - y_ref) + abs(theta_mpc[-1] - theta_ref) + abs(speed_mpc[-1] - speed_ref)
     else:
         abs_convergence_err = abs(x_mpc[-1]) + abs(y_mpc[-1]) + abs(theta_mpc[-1]) + abs(speed_mpc[-1])
-    print(f'Final state: [{x_mpc[-1]:.2f}; {y_mpc[-1]:.2f}; {theta_mpc[-1]:.2f}]; {speed_mpc[-1]:.2f}')
+    print(f'Final state: [{x_mpc[-1]:.2f}; {y_mpc[-1]:.2f}; {theta_mpc[-1]:.2f}; {speed_mpc[-1]:.2f}]')
     print(f'Absolute convergence error: {abs_convergence_err:.2f}')
 
-    fig_name = f'bi_robot_animation_mpc_N{n}_{initial_state_option}.gif'
+    fig_name = f'bi_robot_animation_mpc_N{n}_dt{dt}_{initial_state_option}.gif'
     save_animation_bicycle_trajectory(x_robot=x_mpc, y_robot=y_mpc, theta_robot=theta_mpc, speed_robot=speed_mpc, u_s_robot=u_s_mpc, initial_state_option = initial_state_option, gif_name = fig_name, start_xy=None, goal_xy=None, obstacles=None,
                                      robot_r=0.25, margin=0.05)
  

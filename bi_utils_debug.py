@@ -98,7 +98,7 @@ def bi_mpc_plot_traj(state_mpc, u_mpc, time, option):
     plt.xticks(fontsize=24, fontweight='bold')
     plt.yticks(fontsize=24, fontweight='bold')
     plt.tight_layout()
-    output_dir = f'./bi_figs/bi_mpc_N{n}_{option}.png'
+    output_dir = f'./bi_figs/bi_mpc_N{n}_dt{dt}_{option}.png'
     plt.savefig(output_dir, dpi=300)
     plt.close()
 
