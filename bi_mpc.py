@@ -12,8 +12,8 @@ import time
 prediction_time = n * dt
 # dt_mpc = 0.1
 # dt_pred = 0.1
-dtmpc_ratio = 5 #int(dt_mpc/dt)
-dtpred_ratio = 5 # int(dt_pred/dt)
+dtmpc_ratio = 10 #int(dt_mpc/dt)
+dtpred_ratio = 10 # int(dt_pred/dt)
 dt_mpc = dtmpc_ratio * dt
 dt_pred = dtpred_ratio * dt
 mpc_pred_horizon = int(prediction_time / dt_pred)
@@ -33,6 +33,53 @@ class bi_MPC:
         self.u_a_max = u_a_max
         self.u_s_min = u_s_min
         self.u_s_max = u_s_max
+
+        self._build_solver()
+    
+    def _build_solver(self):
+        HN = self.mpc_pred_horizon
+
+        U = ca.MX.sym("U", 2, HN)
+        P = ca.MX.sym("P", 4 + 4 * (HN + 1), 1)
+
+        z_k = P[0:4]
+        ref_traj = ca.reshape(P[4:], 4, HN + 1)
+
+        Q = np.diag([q1, q2, q3, q4]) * dtpred_ratio
+        R = np.diag([r1, r2]) * dtpred_ratio
+        Hmat = np.diag([h1, h2, h3, h4])
+
+        obj = 0
+        for k in range(HN):
+            u_k = U[:, k]
+            ref_k = ref_traj[:, k]
+
+            obj += ca.mtimes((z_k - ref_k).T, Q @ (z_k - ref_k))
+            obj += ca.mtimes(u_k.T, R @ u_k)
+
+            z_k = self.rk4(z_k, u_k, dt_pred)
+
+        ref_terminal = ref_traj[:, HN]
+        obj += ca.mtimes((z_k - ref_terminal).T, Hmat @ (z_k - ref_terminal))
+
+        U_flat = ca.reshape(U, -1, 1)
+
+        nlp = {
+            "f": obj,
+            "x": U_flat,
+            "p": P,
+        }
+
+        opts = {
+            "ipopt.print_level": 0,
+            "print_time": 0,
+            "ipopt.sb": "yes",
+        }
+
+        self.solver = ca.nlpsol("S", "ipopt", nlp, opts)
+        self.lbu = [self.u_a_min, self.u_s_min] * HN
+        self.ubu = [self.u_a_max, self.u_s_max] * HN
+        
 
     def dynamics(self, z, u):
         # Bicycle model dynamics
@@ -55,48 +102,22 @@ class bi_MPC:
         return z_next
 
     def get_control_input(self, current_state, ref_traj, initial_input_guess):
-        # Define control decision variables (U only, for shooting method)
-        U = ca.MX.sym("U", 2, self.mpc_pred_horizon)
+        current_state = np.asarray(current_state).reshape(-1)
+        ref_traj = np.asarray(ref_traj)
 
-        # Objective and cost weights
-        obj = 0
-        Q = np.diag([q1,q2,q3,q4]) * dtpred_ratio  # State cost weights
-        R = np.diag([r1,r2]) * dtpred_ratio  # Control cost weights
-        H = np.diag([h1,h2,h3,h4]) * dtpred_ratio
+        p_value = np.concatenate([
+            current_state,
+            ref_traj.reshape(-1, order="F"),
+        ]).reshape(-1, 1)
 
-        # Constraints for control inputs only
-        lbu = [self.u_a_min, self.u_s_min] * self.mpc_pred_horizon
-        ubu = [self.u_a_max, self.u_s_max] * self.mpc_pred_horizon
+        sol = self.solver(
+            x0=initial_input_guess,
+            lbx=self.lbu,
+            ubx=self.ubu,
+            p=p_value,
+        )
 
-        # Initial state
-        z_k = current_state
-        z_k = ca.reshape(z_k, -1, 1)
-        # Build the objective by simulating forward using rk4 and accumulating cost
-        for k in range(self.mpc_pred_horizon):
-            # Get control input at step k
-            u_k = U[:, k]
-            ref_k = ref_traj[:, k]
-            ref_k = ca.reshape(ref_k, -1, 1)
-
-            # Compute the cost
-            obj += ca.mtimes((z_k - ref_k).T, Q @ (z_k - ref_k)) + ca.mtimes(u_k.T, R @ u_k)
-
-            # Forward propagate the state using rk4 with the control input
-            z_k = self.rk4(z_k, u_k, dt_pred)
-            
-        # Add terminal cost
-        obj += ca.mtimes((z_k - ref_traj[:, k+1]).T, H @ (z_k - ref_traj[:, k+1]))
-
-        # Define the optimization problem
-        nlp = {'f': obj, 'x': ca.reshape(U, -1, 1)}
-        opts = {'ipopt.print_level':1,'print_time': 0,"ipopt.sb":"yes"}
-        solver = ca.nlpsol('S', 'ipopt', nlp, opts)
-
-        # Solve the optimization problem
-        sol = solver(x0 = initial_input_guess, lbx=lbu, ubx=ubu)
-        u_opt_traj = sol["x"].full()
-        u = u_opt_traj[:2]
-        return u_opt_traj  # Return only the first control action
+        return sol["x"].full()
     
 
 def simulation(z_0, traj_ref):
@@ -112,10 +133,12 @@ def simulation(z_0, traj_ref):
         # ref_traj_segment = traj_ref[:, k:k + n + 1]
         ref_traj_segment = traj_ref[:, k : k + mpc_pred_horizon * dtpred_ratio + 1 : dtpred_ratio]
         if (k) % dtmpc_ratio == 0: 
-            u_pred_traj = controller.get_control_input(x_k, ref_traj_segment, initial_input_guess=u_pred_traj)
+            u_pred_traj = controller.get_control_input( x_k, ref_traj_segment, 
+                initial_input_guess = np.vstack([u_pred_traj[2:],u_pred_traj[-2:]])
+                )
             u_k = u_pred_traj[:2]
             print(f'MPC input update')
-        print(f'MPC N={n} - timestep: {k} finished')
+            print(f'MPC N={n} - timestep: {k} finished')
         
         control_traj.append(u_k)
         x_k = controller.rk4(x_k, u_k, dt)
