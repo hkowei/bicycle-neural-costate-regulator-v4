@@ -1,0 +1,42 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Activate Conda Research",
+            "type": "shell",
+            "command": "(C:\\Users\\hkowei\\working_area\\miniconda3\\shell\\condabin\\conda-hook.ps1) ; (conda activate research)",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Run Python File with debugpy on Port 5678 (env: research)",
+            "type": "shell",
+            "command": "C:\\Users\\hkowei\\working_area\\miniconda3\\envs\\research\\python.exe",
+            "args": [
+                "-m",
+                "debugpy",
+                "--listen",
+                "5678",
+                "${file}"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "dependsOn": [
+                "Activate Conda Research"
+            ],
+            "dependsOrder": "sequence"
+        }
+    ]
+}

@@ -328,7 +328,7 @@ def save_animation_bicycle_trajectory(x_robot, y_robot, theta_robot, speed_robot
     ax.legend(loc="upper right",fontsize=20)
 
 
-    delta_robot = np.atan(tot_dist/rear_dist * u_s_robot)
+    delta_robot = np.arctan(tot_dist/rear_dist * u_s_robot)
     if len(delta_robot) == len(x_robot) - 1:
         delta_robot = np.append(delta_robot, delta_robot[-1])
 
