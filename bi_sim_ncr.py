@@ -38,6 +38,7 @@ model = CoNN(n).to(device)
 # model_name = f'bi_t0_ncr_N{n}_seed_{seed}_e{epoch}.pth' # full horizon abs lambda loss
 # print(f'load model: {model_name}')
 checkpoint_path = f"./checkpoint/bi_t0_ncr_N{n}_seed_{seed}_e{epoch}.pth"
+checkpoint_path = f"./checkpoint/temp.pth"
 checkpoint = torch.load(checkpoint_path)
 print(f'checkpoint loaded from: {checkpoint_path}')
 model.load_state_dict(checkpoint["model_state_dict"])
