@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 from config import T_sim, total_steps_sim, dt, CONN_HIDDEN_DIMS, n, epoch, case, state_0a, state_0b, x_ref, y_ref, theta_ref, speed_ref
-from bi_utils_debug import bicycle_solve_qp, rk4, save_animation, save_animation_bicycle_trajectory, save_bicycle_final_shot
+from bi_utils_debug import bicycle_solve_qp, rk4, save_animation, save_animation_bicycle_trajectory, save_bicycle_final_shot, velocity_cbf
 import time    # 这里导入 time 模块是为了计算 NCR 的仿真时间，看看它的效率如何。
 # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device = torch.device('cpu')  # Force CPU
@@ -38,7 +38,7 @@ model = CoNN(n).to(device)
 # model_name = f'bi_t0_ncr_N{n}_seed_{seed}_e{epoch}.pth' # full horizon abs lambda loss
 # print(f'load model: {model_name}')
 checkpoint_path = f"./checkpoint/bi_t0_ncr_N{n}_seed_{seed}_e{epoch}.pth"
-checkpoint_path = f"./checkpoint/temp.pth"
+# checkpoint_path = f"./checkpoint/temp.pth"
 checkpoint = torch.load(checkpoint_path)
 print(f'checkpoint loaded from: {checkpoint_path}')
 model.load_state_dict(checkpoint["model_state_dict"])
@@ -92,6 +92,7 @@ for i in range(total_steps_sim):
                  lambda_theta=lambdatheta_k_hat, lambda_speed=lambdaspeed_k_hat, 
                  theta=state_k_tensor[0,2].cpu().detach().numpy(),
                  speed=state_k_tensor[0,3].cpu().detach().numpy())
+    u_a = velocity_cbf(u_a=u_a, speed=state_k_tensor[0,3].cpu().detach().numpy())
     u_a = float(u_a)
     u_s = float(u_s)
 

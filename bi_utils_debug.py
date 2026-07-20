@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
-from config import dt, n, u_a_max, u_a_min, u_s_max, u_s_min, T_sim, total_steps_sim, rear_dist, tot_dist, r1, r2, bi_scaling
+from config import dt, n, u_a_max, u_a_min, u_s_max, u_s_min, T_sim, total_steps_sim, rear_dist, tot_dist, r1, r2, bi_scaling, gamma
 import casadi as ca
 import torch
 import random
@@ -165,6 +165,12 @@ def bicycle_solve_qp(lambda_x, lambda_y, lambda_theta, lambda_speed, theta, spee
     u_a_opt = solution['x'][0]
     u_s_opt = solution['x'][1]
     return u_a_opt, u_s_opt
+
+def velocity_cbf(u_a, speed):
+    u_a_cbf = max(-gamma*speed, u_a_min)
+    u_a_cbf = min(u_a_cbf, u_a_max)
+    u_a_cbf = max(u_a_cbf, u_a)
+    return u_a_cbf
 
 def set_seed(seed=42):
     random.seed(seed)

@@ -6,7 +6,14 @@ import torch.nn as nn
 from torchdiffeq import odeint # Use odeint for integration
 import numpy as np
 from bi_utils_debug import set_seed, train_rk4
-from config import dt, betav42, beta_h, rear_dist, CONN_HIDDEN_DIMS, q1, q2, q3, q4, r1, r2, n, h1, h2, h3, h4, epoch, batch_size, Nsample1, Nsample2, Nsample3, Nsample4, x_bound, y_bound, theta_bound, speed_bound, lr, VERSION, lr_factor, lr_patience, lr_threshold, lr_cooldown, min_lr
+from config import (dt, betav42, beta_h, rear_dist, CONN_HIDDEN_DIMS, 
+                    q1, q2, q3, q4, r1, r2, n, 
+                    h1, h2, h3, h4, epoch, batch_size, 
+                    Nsample1, Nsample2, Nsample3, Nsample4, 
+                    x_bound, y_bound, theta_bound, speed_bound, 
+                    lr, VERSION, lr_factor, lr_patience, lr_threshold, lr_cooldown, min_lr, 
+                    gamma, cbf_weight
+                    )
 from torchdiffeq import odeint
 import time
 import argparse
@@ -155,6 +162,7 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
             state_k = state_0
             L_stage = 0
             L_terminal = 0
+            L_cbf = 0
             lambda_cost = 0
             lambdax_i = costate_traj_k_hat[:,0,0]
             lambday_i = costate_traj_k_hat[:,0,1]
@@ -173,7 +181,10 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
                 u_a_opt = -0.5/r1 * lambdaspeed_i
                 u_s_opt =  0.5/r2 * (lambdax_i * speed_i * torch.sin(theta_i) - lambday_i * speed_i * torch.cos(theta_i) - lambdatheta_i * speed_i / rear_dist) 
                 # u_opt = torch.cat([u_a_opt_B.unsqueeze(0), u_beta_opt_B.unsqueeze(0)], dim=0).unsqueeze(0)
-                u_opt = torch.stack([u_a_opt, u_s_opt], dim=1) # (B, 2))
+                cbf_violation = torch.relu(-(u_a_opt+gamma*speed_i))
+                L_cbf += cbf_violation
+                u_a_opt_cbf = torch.max(u_a_opt, -gamma*speed_i)  # Apply velocity CBF constraint
+                u_opt = torch.stack([u_a_opt_cbf, u_s_opt], dim=1) # (B, 2))
 
 
                 # Compute stage cost using matrices
@@ -212,7 +223,7 @@ def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, mod
             L_terminal = (state_k @ H * state_k).sum(dim=1)
             L_terminal_costate = torch.abs(lambdax_i) + torch.abs(lambday_i) + torch.abs(lambdatheta_i) + torch.abs(lambdaspeed_i)
             # Backpropagation
-            loss_B = L_stage + L_terminal + beta*lambda_cost + beta_h*L_terminal_costate
+            loss_B = L_stage + L_terminal + beta*lambda_cost + beta_h*L_terminal_costate + cbf_weight*L_cbf
             loss = loss_B.mean()  # Average over the batch
             back_prop_start_time = time.time()
             loss.backward()                            # 如果之前没有写 optimizer.zero_grad()，那么每次调用 loss.backward() 的时候，梯度会累积起来，这样就会导致模型的参数更新不正确。
