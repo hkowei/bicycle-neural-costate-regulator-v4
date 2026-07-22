@@ -167,7 +167,7 @@ def bicycle_solve_qp(lambda_x, lambda_y, lambda_theta, lambda_speed, theta, spee
     return u_a_opt, u_s_opt
 
 def velocity_cbf(u_a, speed):
-    u_a_cbf = max(-gamma*speed, u_a_min)
+    u_a_cbf = max(-gamma*(speed-0.00), u_a_min)
     u_a_cbf = min(u_a_cbf, u_a_max)
     u_a_cbf = max(u_a_cbf, u_a)
     return u_a_cbf

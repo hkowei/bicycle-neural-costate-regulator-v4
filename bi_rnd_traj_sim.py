@@ -4,16 +4,16 @@ import torch.nn as nn
 import torch
 from config import (x_bound, y_bound, theta_bound, speed_bound, 
                     total_steps_sim, CONN_HIDDEN_DIMS, n, epoch)
-from bi_utils_debug import bicycle_solve_qp, rk4
+from bi_utils_debug import bicycle_solve_qp, rk4, velocity_cbf
 from matplotlib.patches import Rectangle
 
 x_lw_bound = 1
 y_lw_bound = 1
 theta_lw_bound = 0
-x_up_bound = 7
-y_up_bound = 7
+x_up_bound = 6
+y_up_bound = 6
 theta_up_bound = 3.14
-N_init_states = 200
+N_init_states = 100
 hit = 0
 x_ref = 0
 y_ref = 0
@@ -93,6 +93,7 @@ for j in range(N_init_states):
                                     lambda_theta=lambda_theta,lambda_speed=lambda_speed,
                                     theta=state_k_tensor[0,2].cpu().detach().numpy(),
                                     speed=state_k_tensor[0,3].cpu().detach().numpy())
+        # u_a = velocity_cbf(u_a=u_a, speed=state_k_tensor[0,3].cpu().detach().numpy())
         u_s = float(u_s)
         u_a = float(u_a)
         u_k = np.array([u_a,u_s])
