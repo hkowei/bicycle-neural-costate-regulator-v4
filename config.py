@@ -43,7 +43,7 @@ u_a_min = -3
 u_a_max = 3
 u_s_min = -2    # beta should be small
 u_s_max = 2
-case = 'b'
+case = 'a'
 state_0a = np.array([[-2, 2, -1.79, 0]])
-state_0b = np.array([[-4, 4.11*0, 0*2.72, 0]])
+state_0b = np.array([[5.24, 4.11, 0*2.72, 0]])
 x_ref = 1; y_ref = 1; theta_ref = 0; speed_ref = 0

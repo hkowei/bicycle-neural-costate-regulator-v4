@@ -92,7 +92,7 @@ for i in range(total_steps_sim):
                  lambda_theta=lambdatheta_k_hat, lambda_speed=lambdaspeed_k_hat, 
                  theta=state_k_tensor[0,2].cpu().detach().numpy(),
                  speed=state_k_tensor[0,3].cpu().detach().numpy())
-    u_a = velocity_cbf(u_a=u_a, speed=state_k_tensor[0,3].cpu().detach().numpy())
+    # u_a = velocity_cbf(u_a=u_a, speed=state_k_tensor[0,3].cpu().detach().numpy())
     u_a = float(u_a)
     u_s = float(u_s)
 
@@ -155,7 +155,10 @@ plt.xlabel("Time (s)", fontsize=20, fontweight='bold')
 plt.ylabel("State Trajectory", fontsize=20, fontweight='bold')
 plt.legend(fontsize=20)
 plt.grid(True)
-plt.xticks(fontsize=24, fontweight='bold')
+# plt.xticks(fontsize=24, fontweight='bold')
+xtick_grid = np.linspace(0, T_sim, 5)
+plt.xticks(xtick_grid, fontsize=24, fontweight='bold')
+plt.xlim(0, T_sim)
 plt.yticks(fontsize=24, fontweight='bold')
 
 # Plot u trajectories
@@ -166,7 +169,10 @@ plt.xlabel("Time (s)", fontsize=20, fontweight='bold')
 plt.ylabel("Control Input", fontsize=20, fontweight='bold')
 plt.legend(fontsize=28)
 plt.grid(True)
-plt.xticks(fontsize=24, fontweight='bold')
+# plt.xticks(fontsize=24, fontweight='bold')
+xtick_grid = np.linspace(0, T_sim, 5)
+plt.xticks(xtick_grid, fontsize=24, fontweight='bold')
+plt.xlim(0, T_sim)
 plt.yticks(fontsize=24, fontweight='bold')
 plt.tight_layout()
 output_dir = f"./bi_figs/bi_ncr_N{n}_{initial_state_option}.png"
@@ -181,14 +187,14 @@ else:
 print(f'Final state: [{x_traj[-1]:.2f}; {y_traj[-1]:.2f}; {theta_traj[-1]:.2f}; {speed_traj[-1]:.2f}]')  # 追加speed的最终状态
 print(f'Absolute convergence error: {abs_convergence_err:.2f}')
 
-save_animation(t_span, x_traj, y_traj, theta_traj, speed_traj,
-               costate_trajectory, initial_state_option)
+# save_animation(t_span, x_traj, y_traj, theta_traj, speed_traj,
+#                costate_trajectory, initial_state_option)
 
 
-# ================== Robot animation of bicycle ==================
-fig_name = f'bi_robot_animation_ncr_N{n}_{initial_state_option}.gif'
-save_animation_bicycle_trajectory(x_robot=x_traj, y_robot=y_traj, theta_robot=theta_traj, speed_robot=speed_traj, u_s_robot=u_s_traj, initial_state_option = initial_state_option, gif_name = fig_name, start_xy=None, goal_xy=None, obstacles=None,
-                                       robot_r=0.25, margin=0.05)
+# # ================== Robot animation of bicycle ==================
+# fig_name = f'bi_robot_animation_ncr_N{n}_{initial_state_option}.gif'
+# save_animation_bicycle_trajectory(x_robot=x_traj, y_robot=y_traj, theta_robot=theta_traj, speed_robot=speed_traj, u_s_robot=u_s_traj, initial_state_option = initial_state_option, gif_name = fig_name, start_xy=None, goal_xy=None, obstacles=None,
+#                                        robot_r=0.25, margin=0.05)
 # file_name = f'bi_robot_final_shot_ncr_N{n}_{initial_state_option}.png'
 # save_bicycle_final_shot(x_robot=x_traj, y_robot=y_traj, u_beta_robot=u_beta_traj, file_name=file_name, start_xy=None, goal_xy=None, theta_robot=None, obstacles=None, robot_r=0.25, margin=0.05,
 #     show_safety_boundary=True, draw_robot=True, robot_alpha=0.45,)
