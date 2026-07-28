@@ -40,19 +40,33 @@ This work is related to the paper **"Neural Co-state Regulator: A Data-Driven Pa
 
 **NCR Case B: Seen initial conditions and zero reference**
 <p align="center">
-  <img alt="Image 1" src="bi_figs\bi_ncr_N100_b.png" width="45%" />
-  <img alt="Image 2" src="bi_figs\bi_animation_b.gif" width="45%" />
+  <img alt="NCR Case B trajectory and controls" src="bi_figs/bi_ncr_N100_b.png" width="50%" /><br>
+  <strong>Figure 1. NCR Case B state trajectory and control inputs</strong>
+</p>
+<p align="center">
+  <img alt="NCR Case B state animation" src="bi_figs/bi_animation_b.gif" width="50%" /><br>
+  <strong>Figure 2. NCR Case B co-state trajectory</strong>
+</p>
+<p align="center">
+  <video src="bi_animation/bicycle/bi_robot_animation_ncr_N100_b.gif.mp4" width="50%" controls>
+  </video><br>
+  <strong>Figure 3. NCR Case B animation</strong>
 </p>
 
-** NCR sampled/random initial conditions simulation **
-<p align="center">
-  <img alt="Image 1" src="bi_figs\rate0.62_N100_seed1_thre0.4_Tsim20_2-6-2-6.png" width="80%" />
-</p>
 
-** MPC sampled/random initial conditions simulation **
-<p align="center">
-  <img alt="Image 1" src="bi_figs\MPC_rate1.00_N100_dt0.05_Tsim20_dtmpc0.05_dtpred0.05_seed1_thre0.4_0-6-0-6.png" width="80%" />
-</p>
+**Sampled/random initial condition simulation comparison between NCR and MPC**
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img alt="NCR sampled/random initial condition simulation" src="bi_figs/rate0.62_N100_seed1_thre0.4_Tsim20_2-6-2-6.png" width="100%" /><br>
+      <strong>Figure 4. NCR batch simulation.</strong>
+    </td>
+    <td align="center" width="50%">
+      <img alt="MPC sampled/random initial condition simulation" src="bi_figs/MPC_rate1.00_N100_dt0.05_Tsim20_dtmpc0.05_dtpred0.05_seed1_thre0.4_0-6-0-6.png" width="100%" /><br>
+      <strong>Figure 5. MPC batch simulation.</strong>
+    </td>
+  </tr>
+</table>
 
 ## Setup
 
