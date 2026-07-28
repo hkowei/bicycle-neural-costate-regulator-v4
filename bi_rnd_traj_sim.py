@@ -7,8 +7,8 @@ from config import (x_bound, y_bound, theta_bound, speed_bound,
 from bi_utils_debug import bicycle_solve_qp, rk4, velocity_cbf
 from matplotlib.patches import Rectangle
 
-x_lw_bound = 1
-y_lw_bound = 1
+x_lw_bound = 2
+y_lw_bound = 2
 theta_lw_bound = 0
 x_up_bound = 6
 y_up_bound = 6
@@ -42,7 +42,7 @@ class CoNN(nn.Module):
         x = self.fc4(x)
         x = x.view(-1, self.prediction_horizon, 4)
         return x
-seed = 0
+seed = 1
 np.random.seed(seed)
 model = CoNN(n).to(device)
 checkpoint_path = f"./checkpoint/bi_t0_ncr_N{n}_seed_{0}_e{epoch}.pth"
@@ -93,7 +93,7 @@ for j in range(N_init_states):
                                     lambda_theta=lambda_theta,lambda_speed=lambda_speed,
                                     theta=state_k_tensor[0,2].cpu().detach().numpy(),
                                     speed=state_k_tensor[0,3].cpu().detach().numpy())
-        # u_a = velocity_cbf(u_a=u_a, speed=state_k_tensor[0,3].cpu().detach().numpy())
+        u_a = velocity_cbf(u_a=u_a, speed=state_k_tensor[0,3].cpu().detach().numpy())
         u_s = float(u_s)
         u_a = float(u_a)
         u_k = np.array([u_a,u_s])
