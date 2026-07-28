@@ -1,29 +1,60 @@
+# Neural Co-state Regulator Implementation on Bicycle Model
 
-# Overview
+This repository contains the bicycle-model implementation of a Neural Co-state Regulator (NCR) workflow. The code trains a Co-state Neural Network (CoNN) to approximate optimal co-state trajectories, then uses the learned co-states to compute real-time control inputs for a bicycle model with input constraints.
 
-This repository constains the code for the paper "Neural Co-state Regulator: A Data-Driven Paradigm for Real-time Optimal Control with Input Constraints" published at *Conference on Decision and Control (CDC), 2025*. More detailed information can be found at this [website](https://lihanlian.github.io/neural_co-state_regulator/). 
+This work is related to the paper **"Neural Co-state Regulator: A Data-Driven Paradigm for Real-time Optimal Control with Input Constraints"**, published at CDC 2025. More information about the original project can be found on the [project website](https://lihanlian.github.io/neural_co-state_regulator/).
+
+## Structure
+
+- `config_template.py`  
+  Template configuration file.
+
+- `config.py`  
+  Local experiment configuration. This file controls sampling time, prediction horizon, training epochs, cost weights, input constraints, initial states, and simulation settings.
+
+- `bi_train.py`  
+  Trains the Co-state Neural Network for the bicycle model.
+
+- `bi_sim_ncr.py`  
+  Runs NCR simulation using a trained checkpoint.
+
+- `bi_mpc.py`  
+  Defines and runs the bicycle Model Predictive Control baseline.
+
+- `bi_mpc_rnd_traj_sim.py`  
+  Runs MPC simulations over sampled/random initial conditions.
+
+- `bi_ncr_rnd_traj_sim.py`  
+  Runs NCR simulations over sampled/random initial conditions.
+
+- `bi_utils.py`  
+  Shared utility functions for bicycle dynamics, RK4 integration, QP solving, CBF constraints, plotting, and animation.
+
+- `run.py`  
+  Windows helper script that runs both training and simulation.
+
+- `run_cont.py`  
+  Windows helper script that continues training from a previous checkpoint, then runs NCR simulation.
 
 ## Results
 
-**Case A: Seen initial conditions and zero reference**
+**NCR Case B: Seen initial conditions and zero reference**
 <p align="center">
-  <img alt="Image 1" src="figs/ncr_N30_h50_a.png" width="45%" />
-  <img alt="Image 2" src="figs/animation_a.gif" width="45%" />
+  <img alt="Image 1" src="bi_figs\bi_ncr_N100_b.png" width="45%" />
+  <img alt="Image 2" src="bi_figs\bi_animation_b.gif" width="45%" />
 </p>
 
-**Case B: Unseen initial conditions and zero reference**
+** NCR sampled/random initial conditions simulation **
 <p align="center">
-  <img alt="Image 1" src="figs/ncr_N30_h50_b.png" width="45%" />
-  <img alt="Image 2" src="figs/animation_b.gif" width="45%" />
+  <img alt="Image 1" src="bi_figs\rate0.62_N100_seed1_thre0.4_Tsim20_2-6-2-6.png" width="80%" />
 </p>
 
-**Case C: Unseen initial conditions and nonzero reference**
+** MPC sampled/random initial conditions simulation **
 <p align="center">
-  <img alt="Image 1" src="figs/ncr_N30_h50_c.png" width="45%" />
-  <img alt="Image 2" src="figs/animation_c.gif" width="45%" />
+  <img alt="Image 1" src="bi_figs\MPC_rate1.00_N100_dt0.05_Tsim20_dtmpc0.05_dtpred0.05_seed1_thre0.4_0-6-0-6.png" width="80%" />
 </p>
 
-## Run Locally
+## Setup
 
 Clone the project and go to project directory
 ```bash
@@ -32,13 +63,6 @@ Clone the project and go to project directory
 ```bash
   pip install -r requirements.txt
 ```
- - _config.py_ is the file that stores the value of used parameters such as sampling time (dt), preidction horizon (N), range of input constraints, etc.
- - _MPC.py_ defines the Model Predictive Control (MPC) class.
- - run _train.py_ and to train the Co-state Neural Network (CoNN) used in Neural Co-state Regulator (NCR).
- - run _sim_mpc.py_, _sim_ncr.py_ to make the simulation result using MPC and NCR approach respectively.
- - run _comparison\_plot.py_ to visualize both NCR and MPC computational speed vs prediction horizon. 
-
 ## License
 
 [MIT](./LICENSE)
-

@@ -1,14 +1,13 @@
 from matplotlib import pyplot as plt
 import numpy as np
 import torch.nn as nn
-import torch
 from config import (dt, T_sim, total_steps_sim, n, 
                     u_a_min, u_a_max, u_s_min, u_s_max,
                     rear_dist, h1, h2, h3, h4,
                     q1,q2,q3,q4,r1,r2,
                     x_ref,y_ref,theta_ref,speed_ref,
                     state_0a,state_0b)
-from bi_utils_debug import bicycle_solve_qp, rk4
+from bi_utils import bicycle_solve_qp, rk4
 from matplotlib.patches import Rectangle
 import casadi as ca
 from concurrent.futures import ProcessPoolExecutor
@@ -28,8 +27,6 @@ speed_ref = 0
 converge_thre = 0.4
 
 prediction_time = n * dt
-# dt_mpc = 0.1
-# dt_pred = 0.1
 dtmpc_ratio = 1 #int(dt_mpc/dt)
 dtpred_ratio = 1 # int(dt_pred/dt)
 dt_mpc = dtmpc_ratio * dt

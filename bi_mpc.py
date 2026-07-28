@@ -6,14 +6,12 @@ from config import (dt, T_sim, total_steps_sim, n,
                     q1,q2,q3,q4,r1,r2,
                     x_ref,y_ref,theta_ref,speed_ref,
                     state_0a,state_0b)
-from bi_utils_debug import bi_mpc_plot_traj, save_animation_bicycle_trajectory
+from bi_utils import bi_mpc_plot_traj, save_animation_bicycle_trajectory
 import time
 
 prediction_time = n * dt
-# dt_mpc = 0.1
-# dt_pred = 0.1
-dtmpc_ratio = 10 #int(dt_mpc/dt)
-dtpred_ratio = 10 # int(dt_pred/dt)
+dtmpc_ratio = 1
+dtpred_ratio = 1
 dt_mpc = dtmpc_ratio * dt
 dt_pred = dtpred_ratio * dt
 mpc_pred_horizon = int(prediction_time / dt_pred)

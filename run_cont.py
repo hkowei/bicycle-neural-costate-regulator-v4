@@ -1,14 +1,3 @@
-# import subprocess
-# import sys
-
-# print("========== Running bicycle NCR training ==========")
-# subprocess.run([sys.executable, "bi_train_init_debug.py"], check=True)
-
-# print("========== Running bicycle NCR simulation ==========")
-# subprocess.run([sys.executable, "bi_sim_ncr.py"], check=True)
-
-# print("========== Done ==========")
-
 import subprocess
 import sys
 import ctypes
@@ -19,7 +8,7 @@ start_time = time.time()
 
 try:
     print("========== Continue bicycle training ==========")
-    subprocess.run([sys.executable, "bi_train_init_debug.py","--continue-training"], check=True)
+    subprocess.run([sys.executable, "bi_train.py","--continue-training"], check=True)
 
     print("========== Running bicycle simulation ==========")
     subprocess.run([sys.executable, "bi_sim_ncr.py"], check=True)

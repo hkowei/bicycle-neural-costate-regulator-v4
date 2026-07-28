@@ -1,14 +1,11 @@
 __pycache__/
 *.pyc
 draft.py
-figs/
-naming_map.txt
-bi_figs/
-model/
-bi_animation/
 formula_table
-model/
 rundata.txt
 simdata.txt
-bin/
-hamiltonian_analysis.ipynb
+bin/*
+training_log
+# figs/*
+# bi_figs/*
+# bi_animation/bicycle/*

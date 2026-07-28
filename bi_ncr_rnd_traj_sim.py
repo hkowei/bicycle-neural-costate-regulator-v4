@@ -3,8 +3,8 @@ import numpy as np
 import torch.nn as nn
 import torch
 from config import (x_bound, y_bound, theta_bound, speed_bound, 
-                    total_steps_sim, CONN_HIDDEN_DIMS, n, epoch)
-from bi_utils_debug import bicycle_solve_qp, rk4, velocity_cbf
+                    total_steps_sim, CONN_HIDDEN_DIMS, n, epoch, T_sim)
+from bi_utils import bicycle_solve_qp, rk4, velocity_cbf
 from matplotlib.patches import Rectangle
 
 x_lw_bound = 2
@@ -93,7 +93,8 @@ for j in range(N_init_states):
                                     lambda_theta=lambda_theta,lambda_speed=lambda_speed,
                                     theta=state_k_tensor[0,2].cpu().detach().numpy(),
                                     speed=state_k_tensor[0,3].cpu().detach().numpy())
-        u_a = velocity_cbf(u_a=u_a, speed=state_k_tensor[0,3].cpu().detach().numpy())
+        # Positive velocity CBF
+        # u_a = velocity_cbf(u_a=u_a, speed=state_k_tensor[0,3].cpu().detach().numpy())
         u_s = float(u_s)
         u_a = float(u_a)
         u_k = np.array([u_a,u_s])
@@ -137,7 +138,7 @@ ax.set_ylabel("Y (m)")
 ax.grid(True)
 ax.legend()
 plt.tight_layout()
-output_dir = f"./bi_figs/rate{hit/N_init_states:.2f}_N{N_init_states}_seed{seed}_thre{converge_thre}_{x_lw_bound}-{x_up_bound}-{y_lw_bound}-{y_up_bound}.png"
+output_dir = f"./bi_figs/rate{hit/N_init_states:.2f}_N{N_init_states}_seed{seed}_thre{converge_thre}_Tsim{T_sim}_{x_lw_bound}-{x_up_bound}-{y_lw_bound}-{y_up_bound}.png"
 plt.savefig(output_dir, dpi=300)
 plt.close(fig)
 print(f"Figure saved to {output_dir}")

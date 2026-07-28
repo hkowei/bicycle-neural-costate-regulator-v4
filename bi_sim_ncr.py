@@ -3,9 +3,9 @@ import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 from config import T_sim, total_steps_sim, dt, CONN_HIDDEN_DIMS, n, epoch, case, state_0a, state_0b, x_ref, y_ref, theta_ref, speed_ref
-from bi_utils_debug import bicycle_solve_qp, rk4, save_animation, save_animation_bicycle_trajectory, save_bicycle_final_shot, velocity_cbf
-import time    # 这里导入 time 模块是为了计算 NCR 的仿真时间，看看它的效率如何。
-# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+from bi_utils import bicycle_solve_qp, rk4, save_animation, save_animation_bicycle_trajectory, velocity_cbf
+import time 
+
 device = torch.device('cpu')  # Force CPU
 print(f'Using device: {device}')
 
@@ -28,26 +28,19 @@ class CoNN(nn.Module):
         x = x.view(-1, self.prediction_horizon, 4)
         return x
     
-# Specify prediction horizon n and model names。这些东西不必改，但是
-# n = 30
-# h = 50
-# epoch = 50
+
 seed = 0
 model = CoNN(n).to(device)
 
-# model_name = f'bi_t0_ncr_N{n}_seed_{seed}_e{epoch}.pth' # full horizon abs lambda loss
-# print(f'load model: {model_name}')
+
 checkpoint_path = f"./checkpoint/bi_t0_ncr_N{n}_seed_{seed}_e{epoch}.pth"
 # checkpoint_path = f"./checkpoint/temp.pth"
 checkpoint = torch.load(checkpoint_path)
 print(f'checkpoint loaded from: {checkpoint_path}')
 model.load_state_dict(checkpoint["model_state_dict"])
-# model.load_state_dict(torch.load(checkpoint_path))
 model.eval()
 
-# Define the initial condition and total time steps
-# state_0a = np.array([[-1.16, 1.37, -1.79, 0.5]])
-# state_0b = np.array([[-5.24, 4.11, 2.72, 0.5]])   # speed_0待定
+
 state_0c = state_0b
 t_span = np.linspace(0, T_sim, total_steps_sim+1)
 
@@ -59,8 +52,6 @@ elif initial_state_option == 'b':
     state_0 = state_0b
 else:
     state_0 = state_0c
-    # Define reference state
-    # x_ref = 1; y_ref = 1; theta_ref = 0; speed_ref = 0 # speed_ref待定
 
 
 # Simulate the state trajectory using the CoNN-based controller in a feedback loop (without disturbance)
@@ -92,6 +83,8 @@ for i in range(total_steps_sim):
                  lambda_theta=lambdatheta_k_hat, lambda_speed=lambdaspeed_k_hat, 
                  theta=state_k_tensor[0,2].cpu().detach().numpy(),
                  speed=state_k_tensor[0,3].cpu().detach().numpy())
+    
+    # Velocity CBF
     # u_a = velocity_cbf(u_a=u_a, speed=state_k_tensor[0,3].cpu().detach().numpy())
     u_a = float(u_a)
     u_s = float(u_s)
@@ -100,7 +93,7 @@ for i in range(total_steps_sim):
     u_k = np.array([u_a, u_s])
     u_traj_undisturbed.append(u_k)
 
-    state_k = rk4(state_k, u_k)            # rk4就是bicycle dynamics更新
+    state_k = rk4(state_k, u_k)
     state_traj_undisturbed.append(state_k)
 
 # End timing
@@ -115,7 +108,7 @@ u_traj_undisturbed = np.array(u_traj_undisturbed)
 x_traj = state_traj_undisturbed[:,0]
 y_traj = state_traj_undisturbed[:,1]
 theta_traj = state_traj_undisturbed[:,2]
-speed_traj = state_traj_undisturbed[:,3]  # 追加speed轨迹
+speed_traj = state_traj_undisturbed[:,3]
 u_a_traj = u_traj_undisturbed[:,0]
 u_s_traj = u_traj_undisturbed[:,1]
 final_state_undisturbed = state_traj_undisturbed[-1]
@@ -124,7 +117,7 @@ final_state_undisturbed = state_traj_undisturbed[-1]
 x_traj_grad = np.gradient(x_traj, dt)
 y_traj_grad = np.gradient(y_traj, dt)
 theta_traj_grad = np.gradient(theta_traj, dt)
-speed_traj_grad = np.gradient(speed_traj, dt)  # 追加speed轨迹的梯度
+speed_traj_grad = np.gradient(speed_traj, dt)
 
 u_a_traj_grad = np.gradient(u_a_traj, dt)
 u_s_traj_grad = np.gradient(u_s_traj, dt)
@@ -133,8 +126,8 @@ u_s_traj_grad = np.gradient(u_s_traj, dt)
 x_traj_msd = np.mean(x_traj_grad ** 2)
 y_traj_msd = np.mean(y_traj_grad ** 2)
 theta_traj_msd = np.mean(theta_traj_grad ** 2)
-speed_traj_msd = np.mean(speed_traj_grad ** 2)  # 追加speed轨迹的均方导数
-avg_state_msd = (x_traj_msd + y_traj_msd + theta_traj_msd + speed_traj_msd) / 4  # 注意这里的平均是除以4，因为现在有四个状态变量了
+speed_traj_msd = np.mean(speed_traj_grad ** 2)
+avg_state_msd = (x_traj_msd + y_traj_msd + theta_traj_msd + speed_traj_msd) / 4
 print(f"Average State Trajectory Mean Squared derivatives {avg_state_msd:.2f}")
 
 u_a_traj_msd = np.mean(u_a_traj_grad ** 2)
@@ -150,7 +143,7 @@ plt.subplot(1, 2, 1)
 plt.plot(t_span, x_traj, linestyle='-', dashes=[3, 1], label=r"$x_{ncr}$", linewidth=5)
 plt.plot(t_span, y_traj, linestyle='-', dashes=[3, 1], label=r"$y_{ncr}$", linewidth=5)
 plt.plot(t_span, theta_traj, linestyle='-', dashes=[3, 1], label=r"$\theta_{ncr}$", linewidth=5)
-plt.plot(t_span, speed_traj, linestyle='-', dashes=[3, 1], label=r"$speed_{ncr}$", linewidth=5)  # 追加speed轨迹
+plt.plot(t_span, speed_traj, linestyle='-', dashes=[3, 1], label=r"$speed_{ncr}$", linewidth=5)
 plt.xlabel("Time (s)", fontsize=20, fontweight='bold')
 plt.ylabel("State Trajectory", fontsize=20, fontweight='bold')
 plt.legend(fontsize=20)
@@ -183,21 +176,18 @@ print(f"Figure saved to {output_dir}")
 if initial_state_option == 'c':
     abs_convergence_err = abs(x_traj[-1] - x_ref) + abs(y_traj[-1] - y_ref) + abs(theta_traj[-1] - theta_ref) + abs(speed_traj[-1] - speed_ref)  # 追加speed的收敛误差
 else:
-    abs_convergence_err = abs(x_traj[-1]) + abs(y_traj[-1]) + abs(theta_traj[-1]) + abs(speed_traj[-1])  # 追加speed的收敛误差
-print(f'Final state: [{x_traj[-1]:.2f}; {y_traj[-1]:.2f}; {theta_traj[-1]:.2f}; {speed_traj[-1]:.2f}]')  # 追加speed的最终状态
+    abs_convergence_err = abs(x_traj[-1]) + abs(y_traj[-1]) + abs(theta_traj[-1]) + abs(speed_traj[-1])
+print(f'Final state: [{x_traj[-1]:.2f}; {y_traj[-1]:.2f}; {theta_traj[-1]:.2f}; {speed_traj[-1]:.2f}]')
 print(f'Absolute convergence error: {abs_convergence_err:.2f}')
 
-# save_animation(t_span, x_traj, y_traj, theta_traj, speed_traj,
-#                costate_trajectory, initial_state_option)
+save_animation(t_span, x_traj, y_traj, theta_traj, speed_traj,
+               costate_trajectory, initial_state_option)
 
 
-# # ================== Robot animation of bicycle ==================
-# fig_name = f'bi_robot_animation_ncr_N{n}_{initial_state_option}.gif'
-# save_animation_bicycle_trajectory(x_robot=x_traj, y_robot=y_traj, theta_robot=theta_traj, speed_robot=speed_traj, u_s_robot=u_s_traj, initial_state_option = initial_state_option, gif_name = fig_name, start_xy=None, goal_xy=None, obstacles=None,
-#                                        robot_r=0.25, margin=0.05)
-# file_name = f'bi_robot_final_shot_ncr_N{n}_{initial_state_option}.png'
-# save_bicycle_final_shot(x_robot=x_traj, y_robot=y_traj, u_beta_robot=u_beta_traj, file_name=file_name, start_xy=None, goal_xy=None, theta_robot=None, obstacles=None, robot_r=0.25, margin=0.05,
-#     show_safety_boundary=True, draw_robot=True, robot_alpha=0.45,)
+# ================== Robot animation of bicycle ==================
+fig_name = f'bi_robot_animation_ncr_N{n}_{initial_state_option}.gif'
+save_animation_bicycle_trajectory(x_robot=x_traj, y_robot=y_traj, theta_robot=theta_traj, speed_robot=speed_traj, u_s_robot=u_s_traj, initial_state_option = initial_state_option, gif_name = fig_name, start_xy=None, goal_xy=None, obstacles=None,
+                                       robot_r=0.25, margin=0.05)
 
 # ================= Print Configuration ======================
 

@@ -1,0 +1,248 @@
+import os
+from xml.parsers.expat import model
+import torch
+from torch.utils.data import Dataset, DataLoader
+import torch.nn as nn
+from torchdiffeq import odeint # Use odeint for integration
+import numpy as np
+from bi_utils import set_seed, train_rk4
+from config import (dt, betav42, beta_h, rear_dist, CONN_HIDDEN_DIMS, 
+                    q1, q2, q3, q4, r1, r2, n, 
+                    h1, h2, h3, h4, epoch, batch_size, 
+                    Nsample1, Nsample2, Nsample3, Nsample4, 
+                    x_bound, y_bound, theta_bound, speed_bound, 
+                    lr, VERSION, lr_factor, lr_patience, lr_threshold, lr_cooldown, min_lr, 
+                    )
+from torchdiffeq import odeint
+import time
+import argparse
+
+
+if VERSION != 'v4.4':
+    raise ValueError(f"Version mismatch: expected 'v4.4' but got {VERSION}")
+
+beta = betav42
+
+# Step 2: Create Dataset Class
+class InitialStateDataset(Dataset):
+    def __init__(self, initial_states):
+        # Store the initial states as a PyTorch tensor
+        self.initial_states = torch.tensor(initial_states, dtype=torch.float32)
+
+    def __len__(self):
+        return len(self.initial_states)
+
+    def __getitem__(self, idx):
+        # Return a single state
+        return self.initial_states[idx]
+
+# Neural Network Model
+class CoNN(nn.Module):
+    def __init__(self, prediction_horizon):
+        super(CoNN, self).__init__()
+        self.prediction_horizon = prediction_horizon
+        h1, h2, h3 = CONN_HIDDEN_DIMS
+        self.fc1 = nn.Linear(4, h1)
+        self.fc2 = nn.Linear(h1, h2)
+        self.fc3 = nn.Linear(h2, h3)
+        self.fc4 = nn.Linear(h3, 4*prediction_horizon)
+
+    def forward(self, x):
+        x = torch.relu(self.fc1(x))
+        x = torch.relu(self.fc2(x))
+        x = torch.relu(self.fc3(x))
+        x = self.fc4(x)
+        x = x.view(-1, self.prediction_horizon, 4)
+        return x
+
+
+# Training Setup
+def train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, checkpoint_path, batch_size=1, epochs=50, lr=2e-4, continue_training=False):
+
+    dataset = InitialStateDataset(initial_states)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # device = torch.device('cpu')  # Force CPU for debugging
+    print("Using device:", device)
+    # Time span for integration
+    t_span = torch.tensor([0, dt], dtype=torch.float32, device=device)
+    # ode_solver = BicycleDynamics()
+
+    # Initialize NN
+    model = CoNN(n).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=lr_factor, patience=lr_patience, threshold=lr_threshold, cooldown=lr_cooldown, min_lr=min_lr)
+    old_epoch = 0
+  
+    if continue_training:
+        with open("rundata.txt", "r") as f:
+            old_rundata = f.read().strip()
+        old_epoch = int(old_rundata.split("_e")[1].split("_")[0])
+        print("old rundata:", old_rundata)
+        print("old epoch:", old_epoch)
+        print("total epoch:", epochs)
+        print("epoch to train:", epochs - old_epoch)
+        old_checkpoint_path = f"./checkpoint/bi_t0_ncr_N{n}_seed_{seed}_e{old_epoch}.pth"
+        old_checkpoint = torch.load(old_checkpoint_path)
+        model.load_state_dict(old_checkpoint["model_state_dict"])
+        required_keys = ["epoch","model_state_dict","optimizer_state_dict","scheduler_state_dict",]
+        for key in required_keys:
+            if key not in old_checkpoint:
+                raise KeyError(
+                    f"Checkpoint is missing '{key}'. "
+                    f"This file is probably from an old training version and cannot be resumed."
+                )
+        optimizer.load_state_dict(old_checkpoint["optimizer_state_dict"])
+        scheduler.load_state_dict(old_checkpoint["scheduler_state_dict"])
+        old_epoch_from_checkpoint = old_checkpoint["epoch"]
+        if old_epoch != old_epoch_from_checkpoint:
+            error_msg = f"Epoch mismatch: checkpoint epoch {old_epoch_from_checkpoint} does not match epoch from rundata {old_epoch}"
+            print(error_msg)
+            raise ValueError(error_msg)
+    else:
+        with open("training_log.txt","w") as file:
+            pass                                    # delete the content
+
+    
+
+    model.train()
+
+    # Define cost matrices
+    Q = torch.diag(torch.tensor([q1, q2, q3, q4], device=device))
+    R = torch.diag(torch.tensor([r1, r2], device=device))
+    H = torch.diag(torch.tensor([h1, h2, h3, h4], device=device))
+
+    epoch_start = time.time()
+
+    epochs_to_train = epochs - old_epoch
+    for epoch in range(epochs_to_train):   
+
+        if epoch == 1:
+            now = time.time()
+            first_epoch_time = now - epoch_start
+            est_tot = first_epoch_time * epochs
+            print(
+                f"First epoch runtime: {first_epoch_time/60:.2f} min, "
+                f"estimated total time: {est_tot/60:.2f} min",
+                flush=True
+            )
+
+        dyn_duration = 0
+        back_prop_duration = 0
+        
+        epoch_loss = 0
+        epoch_lambda_loss = 0
+        # Iterate over all initial conditions
+        # for state_0 in dataloader:
+        for batch_idx, state_0 in enumerate(dataloader):
+
+            optimizer.zero_grad()
+            state_0 = state_0.to(device)
+
+            costate_traj_k_hat = model(state_0)   # Predicted co-state trajectory starting at time k
+            state_k = state_0
+            L_stage = 0
+            L_terminal = 0
+            lambda_cost = 0
+            lambdax_i = costate_traj_k_hat[:,0,0]
+            lambday_i = costate_traj_k_hat[:,0,1]
+            lambdatheta_i = costate_traj_k_hat[:,0,2]
+            lambdaspeed_i = costate_traj_k_hat[:,0,3]
+
+            for i in range(n):
+                lambdax_i = costate_traj_k_hat[:,i,0]
+                lambday_i = costate_traj_k_hat[:,i,1]
+                lambdatheta_i = costate_traj_k_hat[:,i,2]
+                lambdaspeed_i = costate_traj_k_hat[:,i,3]
+                theta_i = state_k[:, 2]
+                speed_i = state_k[:, 3]
+                u_a_opt = -0.5/r1 * lambdaspeed_i
+                u_s_opt =  0.5/r2 * (lambdax_i * speed_i * torch.sin(theta_i) - lambday_i * speed_i * torch.cos(theta_i) - lambdatheta_i * speed_i / rear_dist) 
+                u_opt = torch.stack([u_a_opt, u_s_opt], dim=1) # (B, 2))
+
+
+                # Compute stage cost using matrices
+                state_cost = (state_k @ Q * state_k).sum(dim=1)   # Quadratic cost for state
+                control_cost = (u_opt @ R * u_opt).sum(dim=1)     # Quadratic cost for control inputs
+                
+                lambda_cost += torch.abs(lambdax_i) + torch.abs(lambday_i) + torch.abs(lambdatheta_i) + torch.abs(lambdaspeed_i)
+                L_stage += state_cost + control_cost
+
+                # Terminate if any value goes infinite
+                if not torch.isfinite(state_k).all():
+                    raise ValueError(f"state_k has non-finite values at epoch {epoch}, batch {batch_idx}, step {i}")
+                if not torch.isfinite(u_opt).all():
+                    raise ValueError(f"u_opt has non-finite values at epoch {epoch}, batch {batch_idx}, step {i}")
+                if not torch.isfinite(costate_traj_k_hat).all():
+                    raise ValueError(f"costate_traj_k_hat has non-finite values at epoch {epoch}, batch {batch_idx}, step {i}")
+                state_k = train_rk4(state_k, u_opt)
+
+            # Compute L_terminal
+            L_terminal = (state_k @ H * state_k).sum(dim=1)
+            L_terminal_costate = torch.abs(lambdax_i) + torch.abs(lambday_i) + torch.abs(lambdatheta_i) + torch.abs(lambdaspeed_i)
+            # Backpropagation
+            loss_B = L_stage + L_terminal + beta*lambda_cost + beta_h*L_terminal_costate
+            loss = loss_B.mean()  # Average over the batch
+            back_prop_start_time = time.time()
+            loss.backward()
+            back_prop_end_time = time.time()
+            back_prop_duration += back_prop_end_time - back_prop_start_time
+            optimizer.step()
+            epoch_loss += loss_B.sum().item()
+            epoch_lambda_loss += lambda_cost.sum().item()
+            
+
+        avg_loss = epoch_loss / len(dataset)
+        avg_lambda_loss = epoch_lambda_loss / len(dataset)
+        scheduler.step(avg_loss)
+        current_lr = optimizer.param_groups[0]["lr"]
+        print(f"********Epoch [{epoch + 1 + old_epoch}/{epochs}], Loss: {avg_loss:.2f}, Lambda Loss {avg_lambda_loss:.2f}, Current Learning Rate: {current_lr:.2e}********")
+        # Save the model each iteration
+        temp_checkpoint_path = f"./checkpoint/temp.pth"
+        torch.save({
+            "epoch": epoch+1+old_epoch,
+            "model_state_dict": model.state_dict(),
+            "optimizer_state_dict": optimizer.state_dict(),
+            "scheduler_state_dict": scheduler.state_dict()
+        }, temp_checkpoint_path)
+        # Log the training loss
+        with open("training_log.txt","a") as file:
+            file.write(f"{avg_loss:.2f}\n")
+
+    torch.save({
+        "epoch": epochs,
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "scheduler_state_dict": scheduler.state_dict()
+    }, checkpoint_path)
+    print(f"Checkpoint saved to {checkpoint_path}")
+
+if __name__ == '__main__': 
+
+    seed = 0
+    set_seed(seed)
+    os.makedirs("./checkpoint", exist_ok=True)
+
+    # Step 1: Generate 1000 combinations of (x, y, theta)
+    # Nsample = 2
+    x_range = np.linspace(-x_bound, x_bound, Nsample1)
+    y_range = np.linspace(-y_bound, y_bound, Nsample2)
+    theta_range = np.linspace(-theta_bound, theta_bound, Nsample3)
+    speed_range = np.linspace(-speed_bound, speed_bound, Nsample4)
+
+    # Create a grid of all combinations
+    x, y, theta, speed = np.meshgrid(x_range, y_range, theta_range, speed_range)
+    initial_states = np.vstack([x.ravel(), y.ravel(), theta.ravel(), speed.ravel()]).T
+
+    # Randomly shuffle the data set
+    np.random.shuffle(initial_states)
+    
+    # determine whether to continue training from a saved model
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--continue-training", action="store_true")
+    args = parser.parse_args()
+    continue_training = args.continue_training
+
+    checkpoint_path = f"./checkpoint/bi_t0_ncr_N{n}_seed_{seed}_e{epoch}.pth"
+    train_network(initial_states, n, h1, h2, h3, h4, q1, q2, q3, q4, r1, r2, checkpoint_path, batch_size=batch_size, epochs=epoch, lr=lr, continue_training=continue_training)
