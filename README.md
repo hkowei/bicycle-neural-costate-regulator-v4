@@ -41,20 +41,20 @@ This work is related to the paper **"Neural Co-state Regulator: A Data-Driven Pa
 **NCR Case B: Seen initial conditions and zero reference**
 <p align="center">
   <img alt="NCR Case B trajectory and controls" src="bi_figs/bi_ncr_N100_b.png" width="50%" /><br>
-  <strong>Figure 1. NCR Case B state trajectory and control inputs</strong>
+  <strong>Figure 1. NCR Case B state trajectory and control inputs.</strong>
 </p>
 <p align="center">
   <img alt="NCR Case B state animation" src="bi_figs/bi_animation_b.gif" width="50%" /><br>
-  <strong>Figure 2. NCR Case B co-state trajectory</strong>
+  <strong>Figure 2. NCR Case B state and co-state animation.</strong>
 </p>
 <p align="center">
   <video src="bi_animation/bicycle/bi_robot_animation_ncr_N100_b.gif.mp4" width="50%" controls>
   </video><br>
-  <strong>Figure 3. NCR Case B animation</strong>
+  <strong>Figure 3. NCR Case B bicycle trajectory animation.</strong>
 </p>
 
 
-**Sampled/random initial condition simulation comparison between NCR and MPC**
+**Batch simulation comparison between NCR and MPC**
 <table>
   <tr>
     <td align="center" width="50%">
