@@ -47,11 +47,9 @@ This work is related to the paper **"Neural Co-state Regulator: A Data-Driven Pa
   <img alt="NCR Case B state animation" src="bi_figs/bi_animation_b.gif" width="50%" /><br>
   <strong>Figure 2. NCR Case B state and co-state animation.</strong>
 </p>
-<p align="center">
-  <video src="bi_animation/bicycle/bi_robot_animation_ncr_N100_b.gif.mp4" width="50%" controls>
-  </video><br>
-  <strong>Figure 3. NCR Case B bicycle trajectory animation.</strong>
-</p>
+
+**Visualization of bicycle animation**<br>
+[Download/view bicycle trajectory animation](bi_animation/bicycle/bi_robot_animation_ncr_N100_b.gif.mp4)
 
 
 **Batch simulation comparison between NCR and MPC**
@@ -59,11 +57,11 @@ This work is related to the paper **"Neural Co-state Regulator: A Data-Driven Pa
   <tr>
     <td align="center" width="50%">
       <img alt="NCR sampled/random initial condition simulation" src="bi_figs/rate0.62_N100_seed1_thre0.4_Tsim20_2-6-2-6.png" width="100%" /><br>
-      <strong>Figure 4. NCR batch simulation.</strong>
+      <strong>Figure 3. NCR batch simulation.</strong>
     </td>
     <td align="center" width="50%">
       <img alt="MPC sampled/random initial condition simulation" src="bi_figs/MPC_rate1.00_N100_dt0.05_Tsim20_dtmpc0.05_dtpred0.05_seed1_thre0.4_0-6-0-6.png" width="100%" /><br>
-      <strong>Figure 5. MPC batch simulation.</strong>
+      <strong>Figure 4. MPC batch simulation.</strong>
     </td>
   </tr>
 </table>
