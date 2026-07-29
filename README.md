@@ -12,15 +12,13 @@ $$
 q = [x, y, \theta, v]^T
 $$
 
-and transformed control input
+and the control input
 
 $$
 u = [u_a, u_s]^T,
 $$
 
-where $u_a = a$ is the longitudinal acceleration of the rear wheel and $u_s = \frac{l_r}{L}\tan\delta$ is the transformed form of steering input $\delta$.
-
-The continuous-time dynamics are
+where $u_a = a$ is the longitudinal acceleration and $u_s = \frac{l_r}{L}\tan\delta$ is the transformed form of steering input $\delta$. Here, L is the wheelbase and $l_r$ is the distance from the state position (x,y) to the rear axle. 
 
 The continuous-time dynamics are
 
