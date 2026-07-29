@@ -49,7 +49,7 @@ This work is related to the paper **"Neural Co-state Regulator: A Data-Driven Pa
 </p>
 
 **Visualization of bicycle animation**<br>
-[Download/view bicycle trajectory animation](bi_animation/bicycle/bi_robot_animation_ncr_N100_b.gif.mp4)
+[Download/view bicycle trajectory animation](bi_animation/bicycle/bi_robot_animation_ncr_N100_b.mp4)
 
 
 **Batch simulation comparison between NCR and MPC**

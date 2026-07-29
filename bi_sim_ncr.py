@@ -185,7 +185,7 @@ save_animation(t_span, x_traj, y_traj, theta_traj, speed_traj,
 
 
 # ================== Robot animation of bicycle ==================
-fig_name = f'bi_robot_animation_ncr_N{n}_{initial_state_option}.gif'
+fig_name = f'bi_robot_animation_ncr_N{n}_{initial_state_option}'
 save_animation_bicycle_trajectory(x_robot=x_traj, y_robot=y_traj, theta_robot=theta_traj, speed_robot=speed_traj, u_s_robot=u_s_traj, initial_state_option = initial_state_option, gif_name = fig_name, start_xy=None, goal_xy=None, obstacles=None,
                                        robot_r=0.25, margin=0.05)
 

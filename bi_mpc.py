@@ -226,7 +226,7 @@ if __name__ == '__main__':
     print(f'Final state: [{x_mpc[-1]:.2f}; {y_mpc[-1]:.2f}; {theta_mpc[-1]:.2f}; {speed_mpc[-1]:.2f}]')
     print(f'Absolute convergence error: {abs_convergence_err:.2f}')
 
-    fig_name = f'bi_robot_animation_mpc_N{n}_dt{dt}_dtmpc{dt_mpc}_dtpred{dt_pred}_{initial_state_option}.gif'
+    fig_name = f'bi_robot_animation_mpc_N{n}_dt{dt}_dtmpc{dt_mpc}_dtpred{dt_pred}_{initial_state_option}'
     save_animation_bicycle_trajectory(x_robot=x_mpc, y_robot=y_mpc, theta_robot=theta_mpc, speed_robot=speed_mpc, u_s_robot=u_s_mpc, initial_state_option = initial_state_option, gif_name = fig_name, start_xy=None, goal_xy=None, obstacles=None,
                                      robot_r=0.25, margin=0.05)
  
