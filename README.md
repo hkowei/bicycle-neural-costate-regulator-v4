@@ -22,7 +22,9 @@ where $u_a = a$ is the longitudinal acceleration of the rear wheel and $u_s = \f
 
 The continuous-time dynamics are
 
-$$
+The continuous-time dynamics are
+
+```math
 \begin{bmatrix}
 \dot{x} \\
 \dot{y} \\
@@ -47,7 +49,7 @@ v\sin\theta \\
 u_a \\
 u_s
 \end{bmatrix}.
-$$
+```
 
 ## Structure
 
