@@ -4,6 +4,51 @@ This repository contains the bicycle-model implementation of a Neural Co-state R
 
 This work is related to the paper **"Neural Co-state Regulator: A Data-Driven Paradigm for Real-time Optimal Control with Input Constraints"**, published at CDC 2025. More information about the original project can be found on the [project website](https://lihanlian.github.io/neural_co-state_regulator/).
 
+## Bicycle Model
+
+This repository uses a four-state bicycle model with state
+
+$$
+q = [x, y, \theta, v]^T
+$$
+
+and transformed control input
+
+$$
+u = [u_a, u_s]^T,
+$$
+
+where $u_a = a$ is the longitudinal acceleration of the rear wheel and $u_s = \frac{l_r}{L}\tan\delta$ is the transformed form of steering input $\delta$.
+
+The continuous-time dynamics are
+
+$$
+\begin{bmatrix}
+\dot{x} \\
+\dot{y} \\
+\dot{\theta} \\
+\dot{v}
+\end{bmatrix}
+=
+\begin{bmatrix}
+v\cos\theta \\
+v\sin\theta \\
+0 \\
+0
+\end{bmatrix}
++
+\begin{bmatrix}
+0 & -v\sin\theta \\
+0 & v\cos\theta \\
+0 & \frac{v}{l_r} \\
+1 & 0
+\end{bmatrix}
+\begin{bmatrix}
+u_a \\
+u_s
+\end{bmatrix}.
+$$
+
 ## Structure
 
 - `config_template.py`  
