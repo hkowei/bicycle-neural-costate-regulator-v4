@@ -102,14 +102,23 @@ u_s
   <tr>
     <td align="center" width="50%">
       <img alt="NCR sampled/random initial condition simulation" src="bi_figs/rate0.62_N100_seed1_thre0.4_Tsim20_2-6-2-6.png" width="100%" /><br>
-      <strong>Figure 3. NCR batch simulation.</strong>
+      <strong>Figure 3. NCR batch simulation within the training range [-2,2]. Convergence rate is 0.62</strong>
     </td>
     <td align="center" width="50%">
-      <img alt="MPC sampled/random initial condition simulation" src="bi_figs/MPC_rate1.00_N100_dt0.05_Tsim20_dtmpc0.05_dtpred0.05_seed1_thre0.4_0-6-0-6.png" width="100%" /><br>
-      <strong>Figure 4. MPC batch simulation.</strong>
+      <img alt="MPC sampled/random initial condition simulation" src="bi_figs/rate0.45_N100_seed1_thre0.4_Tsim20_0-2-0-2.png" width="100%" /><br>
+      <strong>Figure 4. NCR batch simulation outside the training range [-2,2]. Convergence rate is 0.45</strong>
     </td>
+    <!-- <td align="center" width="50%">
+      <img alt="MPC sampled/random initial condition simulation" src="bi_figs/MPC_rate1.00_N100_dt0.05_Tsim20_dtmpc0.05_dtpred0.05_seed1_thre0.4_0-6-0-6.png" width="100%" /><br>
+      <strong>Figure 4. MPC batch simulation from -6 to 6. Convergence rate is 1. </strong>
+    </td> -->
   </tr>
 </table>
+
+<p align="center">
+  <img alt="MPC sampled/random initial condition simulation" src="bi_figs/MPC_rate1.00_N100_dt0.05_Tsim20_dtmpc0.05_dtpred0.05_seed1_thre0.4_0-6-0-6.png" width="50%" /><br>
+      <strong>Figure 5. MPC batch simulation from -6 to 6. Convergence rate is 1. </strong>
+</p>
 
 ## Setup
 
